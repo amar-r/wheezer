@@ -1,0 +1,17 @@
+{
+  "name": "wheezer",
+  "version": "1.0.0",
+  "description": "Self-hosted wheeze / symptom / environment tracker",
+  "main": "server.js",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/amar-r/wheezer.git"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

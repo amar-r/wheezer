@@ -1,0 +1,12 @@
+services:
+  wheezer:
+    build: .
+    container_name: wheezer
+    restart: unless-stopped
+    ports:
+      - "8420:8420"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - PORT=8420
+      - GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}

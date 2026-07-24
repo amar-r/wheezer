@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wheezer</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root{
+  --paper:#F3F5F4;
+  --paper-2:#EAEDEB;
+  --ink:#1B2B2B;
+  --ink-soft:#5C6D6A;
+  --teal:#1D4E4E;
+  --teal-soft:#3F6E6C;
+  --sage:#7C948C;
+  --amber:#C7822F;
+  --amber-soft:#F0DCB8;
+  --line:#D6DBD8;
+  --white:#FCFCFB;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:'Inter',sans-serif;
+  padding:0 0 60px;
+}
+.wrap{max-width:760px;margin:0 auto;padding:0 24px;}
+
+header{
+  padding:40px 24px 28px;
+  border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,var(--paper-2),var(--paper));
+}
+header .inner{max-width:760px;margin:0 auto;}
+h1{
+  font-family:'Newsreader',serif;
+  font-weight:600;
+  font-size:2rem;
+  margin:0 0 4px;
+  color:var(--teal);
+  letter-spacing:-0.01em;
+}
+.sub{
+  color:var(--ink-soft);
+  font-size:0.95rem;
+  margin:0 0 18px;
+}
+.wave{width:100%;height:44px;display:block;}
+.wave path{
+  fill:none;
+  stroke:var(--amber);
+  stroke-width:2;
+  stroke-linecap:round;
+  animation:breathe 5s ease-in-out infinite;
+  transform-origin:center;
+}
+@keyframes breathe{
+  0%,100%{stroke-width:2;opacity:0.55;}
+  50%{stroke-width:3;opacity:1;}
+}
+
+.tabs{display:flex;gap:4px;margin:28px 0 20px;border-bottom:1px solid var(--line);}
+.tab{
+  font-family:'Inter';font-weight:500;font-size:0.9rem;
+  padding:10px 4px;margin-right:20px;cursor:pointer;
+  color:var(--ink-soft);border-bottom:2px solid transparent;
+  background:none;border-top:none;border-left:none;border-right:none;
+}
+.tab.active{color:var(--teal);border-bottom-color:var(--amber);}
+
+.card{
+  background:var(--white);
+  border:1px solid var(--line);
+  border-radius:6px;
+  padding:24px;
+  margin-bottom:16px;
+}
+.field{margin-bottom:16px;}
+label{
+  display:block;font-size:0.78rem;font-weight:600;
+  text-transform:uppercase;letter-spacing:0.04em;
+  color:var(--ink-soft);margin-bottom:6px;
+}
+input[type=text],input[type=date],input[type=time],input[type=number],textarea,select{
+  width:100%;padding:9px 10px;border:1px solid var(--line);
+  border-radius:4px;font-family:'Inter';font-size:0.92rem;
+  background:var(--paper);color:var(--ink);
+}
+textarea{min-height:56px;resize:vertical;}
+.row{display:flex;gap:14px;flex-wrap:wrap;}
+.row > .field{flex:1;min-width:140px;}
+.severity{display:flex;gap:6px;}
+.sev-btn{
+  flex:1;padding:9px 0;text-align:center;border:1px solid var(--line);
+  border-radius:4px;cursor:pointer;font-family:'JetBrains Mono';font-size:0.85rem;
+  background:var(--paper);color:var(--ink-soft);
+}
+.sev-btn.selected{background:var(--teal);color:var(--white);border-color:var(--teal);}
+.check-row{display:flex;gap:18px;align-items:center;flex-wrap:wrap;}
+.check-item{display:flex;align-items:center;gap:6px;font-size:0.9rem;}
+.count-input{display:flex;align-items:center;gap:8px;}
+.count-input button{
+  width:30px;height:30px;border:1px solid var(--line);background:var(--paper);
+  border-radius:4px;cursor:pointer;font-size:1rem;color:var(--teal);
+}
+.count-input span{font-family:'JetBrains Mono';min-width:20px;text-align:center;}
+
+.btn-primary{
+  background:var(--teal);color:var(--white);border:none;
+  padding:11px 22px;border-radius:5px;font-weight:600;font-size:0.9rem;
+  cursor:pointer;font-family:'Inter';
+}
+.btn-primary:hover{background:var(--teal-soft);}
+.btn-primary:disabled{opacity:0.6;cursor:default;}
+
+.stats-row{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
+.stat{
+  flex:1;min-width:140px;background:var(--white);border:1px solid var(--line);border-radius:6px;
+  padding:14px 16px;
+}
+.stat .n{font-family:'JetBrains Mono';font-size:1.5rem;color:var(--teal);font-weight:500;}
+.stat .l{font-size:0.75rem;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.03em;margin-top:2px;}
+
+.chart-wrap{background:var(--white);border:1px solid var(--line);border-radius:6px;padding:18px;margin-bottom:16px;}
+.chart-title{font-size:0.78rem;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;}
+
+.entry{
+  background:var(--white);border:1px solid var(--line);border-radius:6px;
+  padding:16px 18px;margin-bottom:10px;
+}
+.entry-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;flex-wrap:wrap;}
+.entry-date{font-family:'JetBrains Mono';font-weight:500;color:var(--teal);font-size:0.9rem;}
+.entry-time{color:var(--ink-soft);font-size:0.82rem;}
+.tag-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;}
+.tag{
+  font-size:0.72rem;padding:3px 8px;border-radius:10px;
+  background:var(--paper-2);color:var(--ink-soft);font-family:'JetBrains Mono';
+}
+.tag.wheeze{background:var(--amber-soft);color:#7A5219;}
+.entry-detail{font-size:0.87rem;color:var(--ink-soft);line-height:1.5;}
+.entry-detail b{color:var(--ink);font-weight:500;}
+.del{
+  background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:0.78rem;
+  text-decoration:underline;padding:0;
+}
+.empty{color:var(--ink-soft);font-size:0.9rem;text-align:center;padding:30px 0;}
+.err{color:#B0432C;font-size:0.85rem;margin-top:10px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="inner">
+    <h1>Wheezer</h1>
+    <p class="sub">Daily tracking for wheezing, inhaler use, and possible triggers</p>
+    <svg class="wave" viewBox="0 0 700 44" preserveAspectRatio="none">
+      <path d="M0,22 Q20,22 30,10 T60,22 Q80,22 90,34 T120,22 L700,22"/>
+    </svg>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="tabs">
+    <button class="tab active" data-tab="entry">New Entry</button>
+    <button class="tab" data-tab="history">History &amp; Trends</button>
+  </div>
+
+  <div id="tab-entry">
+    <div class="card">
+      <div class="row">
+        <div class="field">
+          <label>Date</label>
+          <input type="date" id="f-date">
+        </div>
+        <div class="field">
+          <label>Time</label>
+          <input type="time" id="f-time">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Wheezing occurred?</label>
+        <div class="check-row">
+          <div class="check-item"><input type="checkbox" id="f-wheeze"> <span>Yes, wheezing present</span></div>
+        </div>
+      </div>
+
+      <div class="field" id="sev-wheeze-wrap" style="display:none;">
+        <label>Wheeze / breathing difficulty severity (0 = none, 5 = severe)</label>
+        <div class="severity" id="sev-wheeze">
+          <div class="sev-btn" data-val="0">0</div>
+          <div class="sev-btn" data-val="1">1</div>
+          <div class="sev-btn" data-val="2">2</div>
+          <div class="sev-btn" data-val="3">3</div>
+          <div class="sev-btn" data-val="4">4</div>
+          <div class="sev-btn" data-val="5">5</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Coughing occurred?</label>
+        <div class="check-row">
+          <div class="check-item"><input type="checkbox" id="f-cough"> <span>Yes, coughing present</span></div>
+        </div>
+      </div>
+
+      <div class="field" id="sev-cough-wrap" style="display:none;">
+        <label>Coughing severity (0–5)</label>
+        <div class="severity" id="sev-cough">
+          <div class="sev-btn" data-val="0">0</div>
+          <div class="sev-btn" data-val="1">1</div>
+          <div class="sev-btn" data-val="2">2</div>
+          <div class="sev-btn" data-val="3">3</div>
+          <div class="sev-btn" data-val="4">4</div>
+          <div class="sev-btn" data-val="5">5</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Chest tightness occurred?</label>
+        <div class="check-row">
+          <div class="check-item"><input type="checkbox" id="f-chest"> <span>Yes, chest tightness present</span></div>
+        </div>
+      </div>
+
+      <div class="field" id="sev-chest-wrap" style="display:none;">
+        <label>Chest tightness severity (0–5)</label>
+        <div class="severity" id="sev-chest">
+          <div class="sev-btn" data-val="0">0</div>
+          <div class="sev-btn" data-val="1">1</div>
+          <div class="sev-btn" data-val="2">2</div>
+          <div class="sev-btn" data-val="3">3</div>
+          <div class="sev-btn" data-val="4">4</div>
+          <div class="sev-btn" data-val="5">5</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Shortness of breath?</label>
+        <div class="check-row">
+          <div class="check-item"><input type="checkbox" id="f-shortness"> <span>Yes, short of breath</span></div>
+        </div>
+      </div>
+
+      <div class="field" id="sev-shortness-wrap" style="display:none;">
+        <label>Shortness of breath severity (0–5)</label>
+        <div class="severity" id="sev-shortness">
+          <div class="sev-btn" data-val="0">0</div>
+          <div class="sev-btn" data-val="1">1</div>
+          <div class="sev-btn" data-val="2">2</div>
+          <div class="sev-btn" data-val="3">3</div>
+          <div class="sev-btn" data-val="4">4</div>
+          <div class="sev-btn" data-val="5">5</div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label>Inhaler — scheduled dose taken?</label>
+          <div class="check-row">
+            <div class="check-item"><input type="checkbox" id="f-scheduled"> <span>Yes</span></div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Inhaler — extra (rescue) puffs</label>
+          <div class="count-input">
+            <button type="button" id="rescue-minus">–</button>
+            <span id="rescue-count">0</span>
+            <button type="button" id="rescue-plus">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label>Zip code</label>
+          <input type="text" id="f-zip" placeholder="e.g. 10001" maxlength="5" inputmode="numeric">
+        </div>
+        <div class="field" style="display:flex;align-items:flex-end;">
+          <button type="button" class="btn-primary" id="aqi-fetch-btn" style="width:100%;">Fetch AQI, Weather &amp; Pollen</button>
+        </div>
+      </div>
+      <div class="err" id="aqi-err" style="display:none;margin-top:-8px;margin-bottom:16px;"></div>
+
+      <div class="row">
+        <div class="field">
+          <label>Outdoor AQI at time of entry</label>
+          <input type="number" id="f-aqi" placeholder="e.g. 42">
+        </div>
+        <div class="field">
+          <label>Today's peak AQI (if known)</label>
+          <input type="number" id="f-aqi-peak" placeholder="e.g. 78">
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label>Pollen level</label>
+          <input type="text" id="f-pollen-level" placeholder="e.g. High (tree)">
+        </div>
+        <div class="field">
+          <label>Pollen index (0–5, Universal Pollen Index)</label>
+          <input type="number" id="f-pollen-index" min="0" max="5" placeholder="e.g. 4">
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label>Temperature (°F)</label>
+          <input type="number" id="f-temp" placeholder="e.g. 88">
+        </div>
+        <div class="field">
+          <label>Humidity (%)</label>
+          <input type="number" id="f-humidity" placeholder="e.g. 55">
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label>Weather / air conditions</label>
+          <input type="text" id="f-weather" placeholder="e.g. Partly cloudy, Windy, Smoke / haze">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Setting</label>
+        <select id="f-setting">
+          <option value="">— select —</option>
+          <option>Indoors — home</option>
+          <option>Indoors — other</option>
+          <option>Outdoors</option>
+          <option>Exercise / exertion</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Breakfast</label>
+        <textarea id="f-breakfast" placeholder="What did you eat/drink for breakfast?"></textarea>
+      </div>
+      <div class="field">
+        <label>Lunch</label>
+        <textarea id="f-lunch" placeholder="What did you eat/drink for lunch?"></textarea>
+      </div>
+      <div class="field">
+        <label>Dinner</label>
+        <textarea id="f-dinner" placeholder="What did you eat/drink for dinner?"></textarea>
+      </div>
+      <div class="field">
+        <label>Snacks</label>
+        <textarea id="f-snacks" placeholder="Anything snacked on throughout the day"></textarea>
+      </div>
+
+      <div class="field">
+        <label>Weight (lbs)</label>
+        <input type="number" id="f-weight" step="0.1" placeholder="e.g. 165.4">
+      </div>
+
+      <div class="field">
+        <label>Other notes (triggers, stress, illness, pets, cleaning products, etc.)</label>
+        <textarea id="f-notes"></textarea>
+      </div>
+
+      <button class="btn-primary" id="save-btn">Save entry</button>
+      <button class="del" id="cancel-edit-btn" style="display:none;margin-left:14px;">Cancel edit</button>
+      <div class="err" id="save-err" style="display:none;"></div>
+    </div>
+  </div>
+
+  <div id="tab-history" style="display:none;">
+    <div class="stats-row">
+      <div class="stat"><div class="n" id="stat-7">–</div><div class="l">Symptom days / 7</div></div>
+      <div class="stat"><div class="n" id="stat-14">–</div><div class="l">Symptom days / 14</div></div>
+      <div class="stat"><div class="n" id="stat-rescue">–</div><div class="l">Rescue puffs / 7d</div></div>
+      <div class="stat"><div class="n" id="stat-avgsev">–</div><div class="l">Avg severity / 7d</div></div>
+    </div>
+    <div class="chart-wrap">
+      <div class="chart-title">Air quality &amp; temperature — hourly, last 7 days</div>
+      <div style="position:relative;height:180px;">
+        <canvas id="aqTrendChart"></canvas>
+      </div>
+      <div class="err" id="aq-log-note" style="display:none;margin-top:10px;margin-bottom:0;"></div>
+    </div>
+    <div class="chart-wrap">
+      <div class="chart-title">Symptom severity &amp; AQI over time</div>
+      <div style="position:relative;height:260px;">
+        <canvas id="trendChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-wrap">
+      <div class="chart-title">Weight over time</div>
+      <div style="position:relative;height:200px;">
+        <canvas id="weightChart"></canvas>
+      </div>
+      <div class="empty" id="weight-empty" style="display:none;padding:12px 0 0;">No weight entries logged yet.</div>
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:14px;">
+      <a href="/api/export" style="text-decoration:none;">
+        <button class="btn-primary" type="button" style="background:var(--teal-soft);">Export all (JSON)</button>
+      </a>
+      <a href="/api/export/csv" style="text-decoration:none;">
+        <button class="btn-primary" type="button" style="background:var(--teal-soft);">Export entries (CSV)</button>
+      </a>
+    </div>
+    <div id="entryList"></div>
+  </div>
+</div>
+
+<script>
+let entries = [];
+let selectedWheeze = null;
+let selectedCough = null;
+let selectedChest = null;
+let selectedShortness = null;
+let rescueCount = 0;
+let trendChartInstance = null;
+let aqTrendChartInstance = null;
+let weightChartInstance = null;
+let editingEntryId = null;
+
+async function loadEntries(){
+  try{
+    const res = await fetch('/api/entries');
+    entries = await res.json();
+  }catch(e){
+    console.error('Failed to load entries', e);
+    entries = [];
+  }
+  renderHistory();
+}
+
+const now = new Date();
+document.getElementById('f-date').value = now.toISOString().slice(0,10);
+document.getElementById('f-time').value = now.toTimeString().slice(0,5);
+
+// Remember last-used zip code locally for convenience
+const savedZip = localStorage.getItem('breathlog-zip');
+if (savedZip) document.getElementById('f-zip').value = savedZip;
+
+document.getElementById('aqi-fetch-btn').addEventListener('click', async () => {
+  const zipEl = document.getElementById('f-zip');
+  const errEl = document.getElementById('aqi-err');
+  const btn = document.getElementById('aqi-fetch-btn');
+  const zip = zipEl.value.trim();
+  errEl.style.display = 'none';
+
+  if (!/^\d{5}$/.test(zip)) {
+    errEl.textContent = 'Enter a 5-digit zip code.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  localStorage.setItem('breathlog-zip', zip);
+  btn.disabled = true;
+  btn.textContent = 'Fetching…';
+
+  const [aqiResult, weatherResult, pollenResult] = await Promise.allSettled([
+    fetch('/api/aqi?zip=' + encodeURIComponent(zip)).then(async r => {
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'AQI lookup failed');
+      return d;
+    }),
+    fetch('/api/weather?zip=' + encodeURIComponent(zip)).then(async r => {
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Weather lookup failed');
+      return d;
+    }),
+    fetch('/api/pollen?zip=' + encodeURIComponent(zip)).then(async r => {
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Pollen lookup failed');
+      return d;
+    })
+  ]);
+
+  const summaryParts = [];
+  const errors = [];
+
+  if (aqiResult.status === 'fulfilled') {
+    const data = aqiResult.value;
+    document.getElementById('f-aqi').value = data.aqi;
+    summaryParts.push(`AQI ${data.aqi} (${data.category || ''})`);
+  } else {
+    errors.push('AQI: ' + aqiResult.reason.message);
+  }
+
+  if (weatherResult.status === 'fulfilled') {
+    const data = weatherResult.value;
+    document.getElementById('f-temp').value = Math.round(data.tempF);
+    document.getElementById('f-humidity').value = Math.round(data.humidity);
+    document.getElementById('f-weather').value = data.condition;
+    summaryParts.push(`${Math.round(data.tempF)}°F, ${data.condition}`);
+  } else {
+    errors.push('Weather: ' + weatherResult.reason.message);
+  }
+
+  if (pollenResult.status === 'fulfilled') {
+    const data = pollenResult.value;
+    document.getElementById('f-pollen-level').value = `${data.dominantCategory} (${data.dominantType})`;
+    document.getElementById('f-pollen-index').value = data.dominantValue;
+    summaryParts.push(`Pollen: ${data.dominantCategory}`);
+    if (data.dominantCategory === 'High' || data.dominantCategory === 'Very High') {
+      const weatherEl = document.getElementById('f-weather');
+      weatherEl.value = weatherEl.value ? `${weatherEl.value}, high pollen` : 'High pollen';
+    }
+  } else {
+    errors.push('Pollen: ' + pollenResult.reason.message);
+  }
+
+  btn.disabled = false;
+
+  if (summaryParts.length) {
+    btn.textContent = summaryParts.join(' — ');
+    setTimeout(() => { btn.textContent = 'Fetch AQI, Weather & Pollen'; }, 4000);
+  } else {
+    btn.textContent = 'Fetch AQI, Weather & Pollen';
+  }
+
+  if (errors.length) {
+    errEl.textContent = errors.join(' · ');
+    errEl.style.display = 'block';
+  }
+});
+
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    const tab = t.dataset.tab;
+    document.getElementById('tab-entry').style.display = tab==='entry' ? 'block':'none';
+    document.getElementById('tab-history').style.display = tab==='history' ? 'block':'none';
+    if(tab==='history') loadEntries();
+  });
+});
+
+function wireSeverity(containerId, onSelect){
+  document.querySelectorAll('#'+containerId+' .sev-btn').forEach(b=>{
+    b.addEventListener('click',()=>{
+      document.querySelectorAll('#'+containerId+' .sev-btn').forEach(x=>x.classList.remove('selected'));
+      b.classList.add('selected');
+      onSelect(parseInt(b.dataset.val));
+    });
+  });
+}
+wireSeverity('sev-wheeze', v=>selectedWheeze=v);
+wireSeverity('sev-cough', v=>selectedCough=v);
+wireSeverity('sev-chest', v=>selectedChest=v);
+wireSeverity('sev-shortness', v=>selectedShortness=v);
+
+function wireSymptomToggle(checkboxId, containerId, clearSelected){
+  document.getElementById(checkboxId).addEventListener('change', (e)=>{
+    document.getElementById(containerId+'-wrap').style.display = e.target.checked ? 'block' : 'none';
+    if(!e.target.checked){
+      clearSelected();
+      document.querySelectorAll('#'+containerId+' .sev-btn').forEach(x=>x.classList.remove('selected'));
+    }
+  });
+}
+wireSymptomToggle('f-wheeze', 'sev-wheeze', ()=>selectedWheeze=null);
+wireSymptomToggle('f-cough', 'sev-cough', ()=>selectedCough=null);
+wireSymptomToggle('f-chest', 'sev-chest', ()=>selectedChest=null);
+wireSymptomToggle('f-shortness', 'sev-shortness', ()=>selectedShortness=null);
+
+document.getElementById('rescue-plus').addEventListener('click',()=>{
+  rescueCount++; document.getElementById('rescue-count').textContent = rescueCount;
+});
+document.getElementById('rescue-minus').addEventListener('click',()=>{
+  rescueCount = Math.max(0, rescueCount-1);
+  document.getElementById('rescue-count').textContent = rescueCount;
+});
+
+function resetEntryForm(){
+  document.getElementById('f-wheeze').checked = false;
+  document.getElementById('f-cough').checked = false;
+  document.getElementById('f-chest').checked = false;
+  document.getElementById('f-shortness').checked = false;
+  document.getElementById('sev-wheeze-wrap').style.display = 'none';
+  document.getElementById('sev-cough-wrap').style.display = 'none';
+  document.getElementById('sev-chest-wrap').style.display = 'none';
+  document.getElementById('sev-shortness-wrap').style.display = 'none';
+  document.getElementById('f-scheduled').checked = false;
+  document.getElementById('f-aqi').value='';
+  document.getElementById('f-aqi-peak').value='';
+  document.getElementById('f-pollen-level').value='';
+  document.getElementById('f-pollen-index').value='';
+  document.getElementById('f-temp').value='';
+  document.getElementById('f-humidity').value='';
+  document.getElementById('f-weather').value='';
+  document.getElementById('f-setting').value='';
+  document.getElementById('f-breakfast').value='';
+  document.getElementById('f-lunch').value='';
+  document.getElementById('f-dinner').value='';
+  document.getElementById('f-snacks').value='';
+  document.getElementById('f-weight').value='';
+  document.getElementById('f-notes').value='';
+  rescueCount = 0;
+  document.getElementById('rescue-count').textContent = 0;
+  selectedWheeze = null; selectedCough = null; selectedChest = null; selectedShortness = null;
+  document.querySelectorAll('.sev-btn').forEach(x=>x.classList.remove('selected'));
+  const now2 = new Date();
+  document.getElementById('f-date').value = now2.toISOString().slice(0,10);
+  document.getElementById('f-time').value = now2.toTimeString().slice(0,5);
+}
+
+function exitEditMode(){
+  editingEntryId = null;
+  document.getElementById('save-btn').textContent = 'Save entry';
+  document.getElementById('cancel-edit-btn').style.display = 'none';
+}
+
+document.getElementById('cancel-edit-btn').addEventListener('click', ()=>{
+  exitEditMode();
+  resetEntryForm();
+});
+
+document.getElementById('save-btn').addEventListener('click', async ()=>{
+  const errEl = document.getElementById('save-err');
+  errEl.style.display = 'none';
+
+  const entry = {
+    date: document.getElementById('f-date').value,
+    time: document.getElementById('f-time').value,
+    wheeze: document.getElementById('f-wheeze').checked,
+    wheezeSeverity: selectedWheeze,
+    cough: document.getElementById('f-cough').checked,
+    coughSeverity: selectedCough,
+    chest: document.getElementById('f-chest').checked,
+    chestSeverity: selectedChest,
+    shortness: document.getElementById('f-shortness').checked,
+    shortnessSeverity: selectedShortness,
+    scheduled: document.getElementById('f-scheduled').checked,
+    rescuePuffs: rescueCount,
+    aqi: document.getElementById('f-aqi').value,
+    aqiPeak: document.getElementById('f-aqi-peak').value,
+    pollenLevel: document.getElementById('f-pollen-level').value,
+    pollenIndex: document.getElementById('f-pollen-index').value,
+    tempF: document.getElementById('f-temp').value,
+    humidity: document.getElementById('f-humidity').value,
+    weather: document.getElementById('f-weather').value,
+    setting: document.getElementById('f-setting').value,
+    breakfast: document.getElementById('f-breakfast').value,
+    lunch: document.getElementById('f-lunch').value,
+    dinner: document.getElementById('f-dinner').value,
+    snacks: document.getElementById('f-snacks').value,
+    weight: document.getElementById('f-weight').value,
+    notes: document.getElementById('f-notes').value
+  };
+
+  if(!entry.date){
+    errEl.textContent = 'Please set a date.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true;
+  try{
+    const isEditing = editingEntryId !== null;
+    const url = isEditing ? '/api/entries/' + editingEntryId : '/api/entries';
+    const method = isEditing ? 'PUT' : 'POST';
+    const res = await fetch(url, {
+      method,
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(entry)
+    });
+    if(!res.ok) throw new Error('Server returned ' + res.status);
+  }catch(e){
+    errEl.textContent = 'Could not save entry — is the server running? (' + e.message + ')';
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    return;
+  }
+  btn.disabled = false;
+
+  exitEditMode();
+  resetEntryForm();
+
+  document.querySelector('.tab[data-tab="history"]').click();
+});
+
+function daysAgo(dateStr){
+  const d = new Date(dateStr+'T00:00:00');
+  const diff = (now - d) / (1000*60*60*24);
+  return diff;
+}
+
+function hasAnySymptom(e){
+  return e.wheeze || e.shortness || e.cough || e.chest || (e.coughSeverity>0) || (e.chestSeverity>0);
+}
+
+function maxSeverity(e){
+  return Math.max(e.wheezeSeverity||0, e.coughSeverity||0, e.chestSeverity||0, e.shortnessSeverity||0);
+}
+
+function renderHistory(){
+  const symptom7 = new Set(entries.filter(e=>hasAnySymptom(e) && daysAgo(e.date)<=7).map(e=>e.date)).size;
+  const symptom14 = new Set(entries.filter(e=>hasAnySymptom(e) && daysAgo(e.date)<=14).map(e=>e.date)).size;
+  const rescue7 = entries.filter(e=>daysAgo(e.date)<=7).reduce((s,e)=>s+(parseInt(e.rescuePuffs)||0),0);
+  const recent7 = entries.filter(e=>daysAgo(e.date)<=7);
+  const avgSev7 = recent7.length
+    ? (recent7.reduce((s,e)=>s+maxSeverity(e),0) / recent7.length).toFixed(1)
+    : '–';
+  document.getElementById('stat-7').textContent = symptom7;
+  document.getElementById('stat-14').textContent = symptom14;
+  document.getElementById('stat-rescue').textContent = rescue7;
+  document.getElementById('stat-avgsev').textContent = avgSev7;
+
+  renderChart();
+  renderAQChart();
+  renderWeightChart();
+
+  const list = document.getElementById('entryList');
+  if(!entries.length){
+    list.innerHTML = '<div class="empty">No entries logged yet. Add your first one above.</div>';
+    return;
+  }
+  list.innerHTML = entries.map(e=>{
+    const tags = [];
+    if(e.wheeze) tags.push(`<span class="tag wheeze">wheeze ${e.wheezeSeverity!=null?e.wheezeSeverity:''}</span>`);
+    if(e.cough || e.coughSeverity) tags.push(`<span class="tag">cough ${e.coughSeverity!=null?e.coughSeverity:''}</span>`);
+    if(e.chest || e.chestSeverity) tags.push(`<span class="tag">chest tightness ${e.chestSeverity!=null?e.chestSeverity:''}</span>`);
+    if(e.shortness) tags.push(`<span class="tag wheeze">shortness of breath ${e.shortnessSeverity!=null?e.shortnessSeverity:''}</span>`);
+    if(e.scheduled) tags.push(`<span class="tag">scheduled dose</span>`);
+    if(e.rescuePuffs>0) tags.push(`<span class="tag">${e.rescuePuffs} rescue puff${e.rescuePuffs>1?'s':''}</span>`);
+    if(e.aqi) tags.push(`<span class="tag">AQI ${e.aqi}</span>`);
+    if(e.aqiPeak) tags.push(`<span class="tag">peak AQI ${e.aqiPeak}</span>`);
+    if(e.pollenLevel) tags.push(`<span class="tag">pollen: ${e.pollenLevel}</span>`);
+    if(e.tempF) tags.push(`<span class="tag">${e.tempF}°F</span>`);
+    if(e.humidity) tags.push(`<span class="tag">${e.humidity}% humidity</span>`);
+    if(e.weather) tags.push(`<span class="tag">${e.weather}</span>`);
+    if(e.setting) tags.push(`<span class="tag">${e.setting}</span>`);
+    if(e.weight) tags.push(`<span class="tag">${e.weight} lbs</span>`);
+
+    let detail = '';
+    if(e.breakfast) detail += `<div><b>Breakfast:</b> ${escapeHtml(e.breakfast)}</div>`;
+    if(e.lunch) detail += `<div><b>Lunch:</b> ${escapeHtml(e.lunch)}</div>`;
+    if(e.dinner) detail += `<div><b>Dinner:</b> ${escapeHtml(e.dinner)}</div>`;
+    if(e.snacks) detail += `<div><b>Snacks:</b> ${escapeHtml(e.snacks)}</div>`;
+    if(e.notes) detail += `<div><b>Notes:</b> ${escapeHtml(e.notes)}</div>`;
+
+    return `<div class="entry">
+      <div class="entry-top">
+        <span class="entry-date">${e.date}</span>
+        <span class="entry-time">${e.time||''}</span>
+      </div>
+      <div class="tag-row">${tags.join('')}</div>
+      <div class="entry-detail">${detail}</div>
+      <div style="margin-top:8px;">
+        <button class="del" onclick="editEntry(${e.id})">Edit</button>
+        <span style="color:var(--line);margin:0 8px;">·</span>
+        <button class="del" onclick="deleteEntry(${e.id})">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function renderAQChart(){
+  const noteEl = document.getElementById('aq-log-note');
+  const ctx = document.getElementById('aqTrendChart');
+  noteEl.style.display = 'none';
+
+  let log = [];
+  try {
+    const res = await fetch('/api/air-quality?days=7');
+    log = await res.json();
+  } catch (e) {
+    noteEl.textContent = 'Could not load hourly air quality history.';
+    noteEl.style.display = 'block';
+  }
+
+  if (aqTrendChartInstance) {
+    aqTrendChartInstance.destroy();
+    aqTrendChartInstance = null;
+  }
+
+  if (!log.length) {
+    noteEl.textContent = 'No hourly readings logged. There\'s no background polling — this chart only reflects historical data, if any was collected in the past.';
+    noteEl.style.display = 'block';
+    return;
+  }
+
+  const labels = log.map(r => {
+    const d = new Date(r.timestamp);
+    return d.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' }) + ' ' + d.toLocaleTimeString(undefined, { hour: 'numeric' });
+  });
+  const aqiData = log.map(r => r.aqi ?? null);
+  const tempData = log.map(r => r.tempF ?? null);
+
+  aqTrendChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'AQI',
+          data: aqiData,
+          borderColor: '#8FA3A0',
+          backgroundColor: 'rgba(143,163,160,0.15)',
+          fill: true,
+          tension: 0.2,
+          pointRadius: 0,
+          borderWidth: 1.5,
+          yAxisID: 'yAqi',
+          spanGaps: true
+        },
+        {
+          label: 'Temp (°F)',
+          data: tempData,
+          borderColor: '#C7822F',
+          backgroundColor: '#C7822F',
+          fill: false,
+          tension: 0.2,
+          pointRadius: 0,
+          borderWidth: 1.5,
+          yAxisID: 'yTemp',
+          spanGaps: true
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'bottom',
+          labels: { color: '#5C6D6A', font: { family: 'Inter', size: 11 }, boxWidth: 12 }
+        },
+        tooltip: {
+          backgroundColor: '#1B2B2B',
+          titleFont: { family: 'JetBrains Mono', size: 11 },
+          bodyFont: { family: 'Inter', size: 12 }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#5C6D6A', font: { family: 'JetBrains Mono', size: 9 }, maxRotation: 45, minRotation: 45, autoSkip: true, maxTicksLimit: 14 },
+          grid: { display: false }
+        },
+        yAqi: {
+          type: 'linear',
+          position: 'left',
+          min: 0,
+          ticks: { color: '#5C6D6A', font: { family: 'Inter', size: 10 } },
+          grid: { color: '#EAEDEB' },
+          title: { display: true, text: 'AQI', color: '#5C6D6A', font: { family: 'Inter', size: 11 } }
+        },
+        yTemp: {
+          type: 'linear',
+          position: 'right',
+          ticks: { color: '#C7822F', font: { family: 'Inter', size: 10 } },
+          grid: { drawOnChartArea: false },
+          title: { display: true, text: '°F', color: '#C7822F', font: { family: 'Inter', size: 11 } }
+        }
+      }
+    }
+  });
+}
+
+function renderChart(){
+  const chartData = entries.slice(0, 20).reverse();
+  const ctx = document.getElementById('trendChart');
+
+  if(trendChartInstance){
+    trendChartInstance.destroy();
+    trendChartInstance = null;
+  }
+
+  if(!chartData.length){
+    return;
+  }
+
+  const labels = chartData.map(e => (e.date || '') + (e.time ? ' ' + e.time : ''));
+  const wheezeData = chartData.map(e => e.wheezeSeverity ?? null);
+  const coughData = chartData.map(e => e.coughSeverity ?? null);
+  const chestData = chartData.map(e => e.chestSeverity ?? null);
+  const shortnessData = chartData.map(e => e.shortnessSeverity ?? null);
+  const aqiData = chartData.map(e => e.aqi ? Number(e.aqi) : null);
+  const rescueData = chartData.map(e => e.rescuePuffs ? Number(e.rescuePuffs) : null);
+
+  trendChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Wheeze',
+          data: wheezeData,
+          borderColor: '#C7822F',
+          backgroundColor: '#C7822F',
+          yAxisID: 'ySev',
+          tension: 0.25,
+          spanGaps: true,
+          pointRadius: 3
+        },
+        {
+          label: 'Cough',
+          data: coughData,
+          borderColor: '#3F6E6C',
+          backgroundColor: '#3F6E6C',
+          yAxisID: 'ySev',
+          tension: 0.25,
+          spanGaps: true,
+          pointRadius: 3
+        },
+        {
+          label: 'Chest tightness',
+          data: chestData,
+          borderColor: '#8B5FA3',
+          backgroundColor: '#8B5FA3',
+          yAxisID: 'ySev',
+          tension: 0.25,
+          spanGaps: true,
+          pointRadius: 3
+        },
+        {
+          label: 'Shortness of breath',
+          data: shortnessData,
+          borderColor: '#2F6FA8',
+          backgroundColor: '#2F6FA8',
+          yAxisID: 'ySev',
+          tension: 0.25,
+          spanGaps: true,
+          pointRadius: 3
+        },
+        {
+          label: 'Rescue puffs',
+          data: rescueData,
+          borderColor: '#B0432C',
+          backgroundColor: '#B0432C',
+          yAxisID: 'ySev',
+          borderDash: [4,3],
+          tension: 0.1,
+          spanGaps: true,
+          pointRadius: 2
+        },
+        {
+          label: 'AQI',
+          data: aqiData,
+          borderColor: '#8FA3A0',
+          backgroundColor: '#8FA3A0',
+          yAxisID: 'yAqi',
+          borderDash: [2,2],
+          tension: 0.25,
+          spanGaps: true,
+          pointRadius: 2
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { color: '#5C6D6A', font: { family: 'Inter', size: 11 }, boxWidth: 12 }
+        },
+        tooltip: {
+          backgroundColor: '#1B2B2B',
+          titleFont: { family: 'JetBrains Mono', size: 11 },
+          bodyFont: { family: 'Inter', size: 12 }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#5C6D6A', font: { family: 'JetBrains Mono', size: 10 }, maxRotation: 45, minRotation: 45 },
+          grid: { color: '#EAEDEB' }
+        },
+        ySev: {
+          type: 'linear',
+          position: 'left',
+          min: 0,
+          suggestedMax: 5,
+          ticks: { color: '#5C6D6A', font: { family: 'Inter', size: 10 }, stepSize: 1 },
+          grid: { color: '#EAEDEB' },
+          title: { display: true, text: 'Severity / puffs (0–5)', color: '#5C6D6A', font: { family: 'Inter', size: 11 } }
+        },
+        yAqi: {
+          type: 'linear',
+          position: 'right',
+          min: 0,
+          ticks: { color: '#8FA3A0', font: { family: 'Inter', size: 10 } },
+          grid: { drawOnChartArea: false },
+          title: { display: true, text: 'AQI', color: '#8FA3A0', font: { family: 'Inter', size: 11 } }
+        }
+      }
+    }
+  });
+}
+
+function renderWeightChart(){
+  const emptyEl = document.getElementById('weight-empty');
+  const ctx = document.getElementById('weightChart');
+
+  if(weightChartInstance){
+    weightChartInstance.destroy();
+    weightChartInstance = null;
+  }
+
+  const weightData = entries
+    .filter(e => e.weight !== undefined && e.weight !== null && e.weight !== '')
+    .map(e => ({ date: e.date, time: e.time, weight: Number(e.weight) }))
+    .sort((a,b) => (a.date + (a.time||'')).localeCompare(b.date + (b.time||'')));
+
+  if(!weightData.length){
+    emptyEl.style.display = 'block';
+    return;
+  }
+  emptyEl.style.display = 'none';
+
+  const labels = weightData.map(w => w.date + (w.time ? ' ' + w.time : ''));
+  const values = weightData.map(w => w.weight);
+
+  weightChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Weight (lbs)',
+        data: values,
+        borderColor: '#1D4E4E',
+        backgroundColor: 'rgba(29,78,78,0.12)',
+        fill: true,
+        tension: 0.25,
+        spanGaps: true,
+        pointRadius: 3
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1B2B2B',
+          titleFont: { family: 'JetBrains Mono', size: 11 },
+          bodyFont: { family: 'Inter', size: 12 }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#5C6D6A', font: { family: 'JetBrains Mono', size: 10 }, maxRotation: 45, minRotation: 45 },
+          grid: { color: '#EAEDEB' }
+        },
+        y: {
+          ticks: { color: '#5C6D6A', font: { family: 'Inter', size: 10 } },
+          grid: { color: '#EAEDEB' },
+          title: { display: true, text: 'lbs', color: '#5C6D6A', font: { family: 'Inter', size: 11 } }
+        }
+      }
+    }
+  });
+}
+
+function escapeHtml(s){
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+async function deleteEntry(id){
+  try{
+    await fetch('/api/entries/' + id, { method: 'DELETE' });
+  }catch(e){
+    console.error('Failed to delete', e);
+  }
+  await loadEntries();
+}
+window.deleteEntry = deleteEntry;
+
+function selectSeverityButton(containerId, value){
+  document.querySelectorAll('#'+containerId+' .sev-btn').forEach(b=>{
+    b.classList.toggle('selected', Number(b.dataset.val) === Number(value));
+  });
+}
+
+function editEntry(id){
+  const entry = entries.find(e => e.id === id);
+  if(!entry) return;
+
+  editingEntryId = id;
+  document.getElementById('save-btn').textContent = 'Update entry';
+  document.getElementById('cancel-edit-btn').style.display = 'inline-block';
+
+  document.getElementById('f-date').value = entry.date || '';
+  document.getElementById('f-time').value = entry.time || '';
+  document.getElementById('f-wheeze').checked = !!entry.wheeze;
+  document.getElementById('sev-wheeze-wrap').style.display = entry.wheeze ? 'block' : 'none';
+  const hasCough = !!entry.cough || entry.coughSeverity != null;
+  document.getElementById('f-cough').checked = hasCough;
+  document.getElementById('sev-cough-wrap').style.display = hasCough ? 'block' : 'none';
+  const hasChest = !!entry.chest || entry.chestSeverity != null;
+  document.getElementById('f-chest').checked = hasChest;
+  document.getElementById('sev-chest-wrap').style.display = hasChest ? 'block' : 'none';
+  document.getElementById('f-shortness').checked = !!entry.shortness;
+  document.getElementById('sev-shortness-wrap').style.display = entry.shortness ? 'block' : 'none';
+  document.getElementById('f-scheduled').checked = !!entry.scheduled;
+  document.getElementById('f-aqi').value = entry.aqi ?? '';
+  document.getElementById('f-aqi-peak').value = entry.aqiPeak ?? '';
+  document.getElementById('f-pollen-level').value = entry.pollenLevel ?? '';
+  document.getElementById('f-pollen-index').value = entry.pollenIndex ?? '';
+  document.getElementById('f-temp').value = entry.tempF ?? '';
+  document.getElementById('f-humidity').value = entry.humidity ?? '';
+  document.getElementById('f-weather').value = entry.weather || '';
+  document.getElementById('f-setting').value = entry.setting || '';
+  document.getElementById('f-breakfast').value = entry.breakfast || '';
+  document.getElementById('f-lunch').value = entry.lunch || '';
+  document.getElementById('f-dinner').value = entry.dinner || '';
+  document.getElementById('f-snacks').value = entry.snacks || '';
+  document.getElementById('f-weight').value = entry.weight ?? '';
+  document.getElementById('f-notes').value = entry.notes || '';
+
+  rescueCount = Number(entry.rescuePuffs) || 0;
+  document.getElementById('rescue-count').textContent = rescueCount;
+
+  selectedWheeze = entry.wheezeSeverity ?? null;
+  selectedCough = entry.coughSeverity ?? null;
+  selectedChest = entry.chestSeverity ?? null;
+  selectedShortness = entry.shortnessSeverity ?? null;
+  document.querySelectorAll('.sev-btn').forEach(x=>x.classList.remove('selected'));
+  if(selectedWheeze !== null) selectSeverityButton('sev-wheeze', selectedWheeze);
+  if(selectedCough !== null) selectSeverityButton('sev-cough', selectedCough);
+  if(selectedChest !== null) selectSeverityButton('sev-chest', selectedChest);
+  if(selectedShortness !== null) selectSeverityButton('sev-shortness', selectedShortness);
+
+  document.querySelector('.tab[data-tab="entry"]').click();
+}
+window.editEntry = editEntry;
+
+loadEntries();
+</script>
+</body>
+</html>
