@@ -4,11 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Wheezer</title>
+<script>
+(function(){
+  var saved = localStorage.getItem('wheezer-theme');
+  if (saved === 'light' || saved === 'dark') document.documentElement.dataset.theme = saved;
+})();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root{
+  color-scheme: light dark;
   --paper:#F3F5F4;
   --paper-2:#EAEDEB;
   --ink:#1B2B2B;
@@ -18,10 +25,62 @@
   --sage:#7C948C;
   --amber:#C7822F;
   --amber-soft:#F0DCB8;
+  --amber-text:#7A5219;
   --line:#D6DBD8;
   --white:#FCFCFB;
+  --error:#B0432C;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --paper:#14201F;
+    --paper-2:#1B2827;
+    --ink:#E7ECEA;
+    --ink-soft:#93A6A2;
+    --teal:#5CB3AC;
+    --teal-soft:#78C4BD;
+    --sage:#8FA39C;
+    --amber:#E3A75C;
+    --amber-soft:#3A2C18;
+    --amber-text:#E9C48C;
+    --line:#2B3B39;
+    --white:#1C2C2A;
+    --error:#E27A5F;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --paper:#14201F;
+  --paper-2:#1B2827;
+  --ink:#E7ECEA;
+  --ink-soft:#93A6A2;
+  --teal:#5CB3AC;
+  --teal-soft:#78C4BD;
+  --sage:#8FA39C;
+  --amber:#E3A75C;
+  --amber-soft:#3A2C18;
+  --amber-text:#E9C48C;
+  --line:#2B3B39;
+  --white:#1C2C2A;
+  --error:#E27A5F;
+}
+:root[data-theme="light"]{
+  color-scheme: light;
+  --paper:#F3F5F4;
+  --paper-2:#EAEDEB;
+  --ink:#1B2B2B;
+  --ink-soft:#5C6D6A;
+  --teal:#1D4E4E;
+  --teal-soft:#3F6E6C;
+  --sage:#7C948C;
+  --amber:#C7822F;
+  --amber-soft:#F0DCB8;
+  --amber-text:#7A5219;
+  --line:#D6DBD8;
+  --white:#FCFCFB;
+  --error:#B0432C;
 }
 *{box-sizing:border-box;}
+body{transition:background-color 0.15s ease, color 0.15s ease;}
 body{
   margin:0;
   background:var(--paper);
@@ -141,7 +200,7 @@ textarea{min-height:56px;resize:vertical;}
   font-size:0.72rem;padding:3px 8px;border-radius:10px;
   background:var(--paper-2);color:var(--ink-soft);font-family:'JetBrains Mono';
 }
-.tag.wheeze{background:var(--amber-soft);color:#7A5219;}
+.tag.wheeze{background:var(--amber-soft);color:var(--amber-text);}
 .entry-detail{font-size:0.87rem;color:var(--ink-soft);line-height:1.5;}
 .entry-detail b{color:var(--ink);font-weight:500;}
 .del{
@@ -149,10 +208,21 @@ textarea{min-height:56px;resize:vertical;}
   text-decoration:underline;padding:0;
 }
 .empty{color:var(--ink-soft);font-size:0.9rem;text-align:center;padding:30px 0;}
-.err{color:#B0432C;font-size:0.85rem;margin-top:10px;}
+.err{color:var(--error);font-size:0.85rem;margin-top:10px;}
+
+.theme-toggle{
+  position:fixed;top:16px;right:16px;z-index:10;
+  padding:6px 12px;border:1px solid var(--line);border-radius:20px;
+  background:var(--white);color:var(--ink-soft);
+  font-family:'Inter';font-size:0.78rem;font-weight:500;
+  cursor:pointer;
+}
+.theme-toggle:hover{color:var(--teal);border-color:var(--teal);}
 </style>
 </head>
 <body>
+
+<button type="button" id="theme-toggle" class="theme-toggle" title="Toggle color theme" aria-label="Toggle color theme">Auto</button>
 
 <header>
   <div class="inner">
@@ -421,6 +491,82 @@ let trendChartInstance = null;
 let aqTrendChartInstance = null;
 let weightChartInstance = null;
 let editingEntryId = null;
+
+const THEME_KEY = 'wheezer-theme';
+
+function isDarkMode(){
+  const stored = document.documentElement.dataset.theme;
+  if (stored === 'dark') return true;
+  if (stored === 'light') return false;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+
+function chartPalette(){
+  return isDarkMode() ? {
+    textMuted: '#93A6A2',
+    textStrong: '#E7ECEA',
+    gridLine: '#2B3B39',
+    tooltipBg: '#0F1C1A',
+    wheeze: '#E3A75C',
+    cough: '#78C4BD',
+    chest: '#B98BD1',
+    shortness: '#6BA8E0',
+    rescue: '#E27A5F',
+    aqi: '#A8BDB8',
+    aqiFill: 'rgba(168,189,184,0.18)',
+    temp: '#E3A75C',
+    weight: '#5CB3AC',
+    weightFill: 'rgba(92,179,172,0.18)'
+  } : {
+    textMuted: '#5C6D6A',
+    textStrong: '#1B2B2B',
+    gridLine: '#EAEDEB',
+    tooltipBg: '#1B2B2B',
+    wheeze: '#C7822F',
+    cough: '#3F6E6C',
+    chest: '#8B5FA3',
+    shortness: '#2F6FA8',
+    rescue: '#B0432C',
+    aqi: '#8FA3A0',
+    aqiFill: 'rgba(143,163,160,0.15)',
+    temp: '#C7822F',
+    weight: '#1D4E4E',
+    weightFill: 'rgba(29,78,78,0.12)'
+  };
+}
+
+function updateThemeToggleLabel(){
+  const stored = localStorage.getItem(THEME_KEY);
+  document.getElementById('theme-toggle').textContent = stored === 'light' ? 'Light' : stored === 'dark' ? 'Dark' : 'Auto';
+}
+
+function refreshChartsForTheme(){
+  if (document.getElementById('tab-history').style.display === 'block') {
+    renderChart();
+    renderAQChart();
+    renderWeightChart();
+  }
+}
+
+updateThemeToggleLabel();
+
+document.getElementById('theme-toggle').addEventListener('click', () => {
+  const stored = localStorage.getItem(THEME_KEY);
+  const next = stored === 'light' ? 'dark' : stored === 'dark' ? null : 'light';
+  if (next) {
+    localStorage.setItem(THEME_KEY, next);
+    document.documentElement.dataset.theme = next;
+  } else {
+    localStorage.removeItem(THEME_KEY);
+    delete document.documentElement.dataset.theme;
+  }
+  updateThemeToggleLabel();
+  refreshChartsForTheme();
+});
+
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  if (!localStorage.getItem(THEME_KEY)) refreshChartsForTheme();
+});
 
 async function loadEntries(){
   try{
@@ -788,6 +934,7 @@ async function renderAQChart(){
   });
   const aqiData = log.map(r => r.aqi ?? null);
   const tempData = log.map(r => r.tempF ?? null);
+  const pal = chartPalette();
 
   aqTrendChartInstance = new Chart(ctx, {
     type: 'line',
@@ -797,8 +944,8 @@ async function renderAQChart(){
         {
           label: 'AQI',
           data: aqiData,
-          borderColor: '#8FA3A0',
-          backgroundColor: 'rgba(143,163,160,0.15)',
+          borderColor: pal.aqi,
+          backgroundColor: pal.aqiFill,
           fill: true,
           tension: 0.2,
           pointRadius: 0,
@@ -809,8 +956,8 @@ async function renderAQChart(){
         {
           label: 'Temp (°F)',
           data: tempData,
-          borderColor: '#C7822F',
-          backgroundColor: '#C7822F',
+          borderColor: pal.temp,
+          backgroundColor: pal.temp,
           fill: false,
           tension: 0.2,
           pointRadius: 0,
@@ -828,33 +975,33 @@ async function renderAQChart(){
         legend: {
           display: true,
           position: 'bottom',
-          labels: { color: '#5C6D6A', font: { family: 'Inter', size: 11 }, boxWidth: 12 }
+          labels: { color: pal.textMuted, font: { family: 'Inter', size: 11 }, boxWidth: 12 }
         },
         tooltip: {
-          backgroundColor: '#1B2B2B',
+          backgroundColor: pal.tooltipBg,
           titleFont: { family: 'JetBrains Mono', size: 11 },
           bodyFont: { family: 'Inter', size: 12 }
         }
       },
       scales: {
         x: {
-          ticks: { color: '#5C6D6A', font: { family: 'JetBrains Mono', size: 9 }, maxRotation: 45, minRotation: 45, autoSkip: true, maxTicksLimit: 14 },
+          ticks: { color: pal.textMuted, font: { family: 'JetBrains Mono', size: 9 }, maxRotation: 45, minRotation: 45, autoSkip: true, maxTicksLimit: 14 },
           grid: { display: false }
         },
         yAqi: {
           type: 'linear',
           position: 'left',
           min: 0,
-          ticks: { color: '#5C6D6A', font: { family: 'Inter', size: 10 } },
-          grid: { color: '#EAEDEB' },
-          title: { display: true, text: 'AQI', color: '#5C6D6A', font: { family: 'Inter', size: 11 } }
+          ticks: { color: pal.textMuted, font: { family: 'Inter', size: 10 } },
+          grid: { color: pal.gridLine },
+          title: { display: true, text: 'AQI', color: pal.textMuted, font: { family: 'Inter', size: 11 } }
         },
         yTemp: {
           type: 'linear',
           position: 'right',
-          ticks: { color: '#C7822F', font: { family: 'Inter', size: 10 } },
+          ticks: { color: pal.temp, font: { family: 'Inter', size: 10 } },
           grid: { drawOnChartArea: false },
-          title: { display: true, text: '°F', color: '#C7822F', font: { family: 'Inter', size: 11 } }
+          title: { display: true, text: '°F', color: pal.temp, font: { family: 'Inter', size: 11 } }
         }
       }
     }
@@ -881,6 +1028,7 @@ function renderChart(){
   const shortnessData = chartData.map(e => e.shortnessSeverity ?? null);
   const aqiData = chartData.map(e => e.aqi ? Number(e.aqi) : null);
   const rescueData = chartData.map(e => e.rescuePuffs ? Number(e.rescuePuffs) : null);
+  const pal = chartPalette();
 
   trendChartInstance = new Chart(ctx, {
     type: 'line',
@@ -890,8 +1038,8 @@ function renderChart(){
         {
           label: 'Wheeze',
           data: wheezeData,
-          borderColor: '#C7822F',
-          backgroundColor: '#C7822F',
+          borderColor: pal.wheeze,
+          backgroundColor: pal.wheeze,
           yAxisID: 'ySev',
           tension: 0.25,
           spanGaps: true,
@@ -900,8 +1048,8 @@ function renderChart(){
         {
           label: 'Cough',
           data: coughData,
-          borderColor: '#3F6E6C',
-          backgroundColor: '#3F6E6C',
+          borderColor: pal.cough,
+          backgroundColor: pal.cough,
           yAxisID: 'ySev',
           tension: 0.25,
           spanGaps: true,
@@ -910,8 +1058,8 @@ function renderChart(){
         {
           label: 'Chest tightness',
           data: chestData,
-          borderColor: '#8B5FA3',
-          backgroundColor: '#8B5FA3',
+          borderColor: pal.chest,
+          backgroundColor: pal.chest,
           yAxisID: 'ySev',
           tension: 0.25,
           spanGaps: true,
@@ -920,8 +1068,8 @@ function renderChart(){
         {
           label: 'Shortness of breath',
           data: shortnessData,
-          borderColor: '#2F6FA8',
-          backgroundColor: '#2F6FA8',
+          borderColor: pal.shortness,
+          backgroundColor: pal.shortness,
           yAxisID: 'ySev',
           tension: 0.25,
           spanGaps: true,
@@ -930,8 +1078,8 @@ function renderChart(){
         {
           label: 'Rescue puffs',
           data: rescueData,
-          borderColor: '#B0432C',
-          backgroundColor: '#B0432C',
+          borderColor: pal.rescue,
+          backgroundColor: pal.rescue,
           yAxisID: 'ySev',
           borderDash: [4,3],
           tension: 0.1,
@@ -941,8 +1089,8 @@ function renderChart(){
         {
           label: 'AQI',
           data: aqiData,
-          borderColor: '#8FA3A0',
-          backgroundColor: '#8FA3A0',
+          borderColor: pal.aqi,
+          backgroundColor: pal.aqi,
           yAxisID: 'yAqi',
           borderDash: [2,2],
           tension: 0.25,
@@ -958,35 +1106,35 @@ function renderChart(){
       plugins: {
         legend: {
           position: 'bottom',
-          labels: { color: '#5C6D6A', font: { family: 'Inter', size: 11 }, boxWidth: 12 }
+          labels: { color: pal.textMuted, font: { family: 'Inter', size: 11 }, boxWidth: 12 }
         },
         tooltip: {
-          backgroundColor: '#1B2B2B',
+          backgroundColor: pal.tooltipBg,
           titleFont: { family: 'JetBrains Mono', size: 11 },
           bodyFont: { family: 'Inter', size: 12 }
         }
       },
       scales: {
         x: {
-          ticks: { color: '#5C6D6A', font: { family: 'JetBrains Mono', size: 10 }, maxRotation: 45, minRotation: 45 },
-          grid: { color: '#EAEDEB' }
+          ticks: { color: pal.textMuted, font: { family: 'JetBrains Mono', size: 10 }, maxRotation: 45, minRotation: 45 },
+          grid: { color: pal.gridLine }
         },
         ySev: {
           type: 'linear',
           position: 'left',
           min: 0,
           suggestedMax: 5,
-          ticks: { color: '#5C6D6A', font: { family: 'Inter', size: 10 }, stepSize: 1 },
-          grid: { color: '#EAEDEB' },
-          title: { display: true, text: 'Severity / puffs (0–5)', color: '#5C6D6A', font: { family: 'Inter', size: 11 } }
+          ticks: { color: pal.textMuted, font: { family: 'Inter', size: 10 }, stepSize: 1 },
+          grid: { color: pal.gridLine },
+          title: { display: true, text: 'Severity / puffs (0–5)', color: pal.textMuted, font: { family: 'Inter', size: 11 } }
         },
         yAqi: {
           type: 'linear',
           position: 'right',
           min: 0,
-          ticks: { color: '#8FA3A0', font: { family: 'Inter', size: 10 } },
+          ticks: { color: pal.aqi, font: { family: 'Inter', size: 10 } },
           grid: { drawOnChartArea: false },
-          title: { display: true, text: 'AQI', color: '#8FA3A0', font: { family: 'Inter', size: 11 } }
+          title: { display: true, text: 'AQI', color: pal.aqi, font: { family: 'Inter', size: 11 } }
         }
       }
     }
@@ -1015,6 +1163,7 @@ function renderWeightChart(){
 
   const labels = weightData.map(w => w.date + (w.time ? ' ' + w.time : ''));
   const values = weightData.map(w => w.weight);
+  const pal = chartPalette();
 
   weightChartInstance = new Chart(ctx, {
     type: 'line',
@@ -1023,8 +1172,8 @@ function renderWeightChart(){
       datasets: [{
         label: 'Weight (lbs)',
         data: values,
-        borderColor: '#1D4E4E',
-        backgroundColor: 'rgba(29,78,78,0.12)',
+        borderColor: pal.weight,
+        backgroundColor: pal.weightFill,
         fill: true,
         tension: 0.25,
         spanGaps: true,
@@ -1038,20 +1187,20 @@ function renderWeightChart(){
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: '#1B2B2B',
+          backgroundColor: pal.tooltipBg,
           titleFont: { family: 'JetBrains Mono', size: 11 },
           bodyFont: { family: 'Inter', size: 12 }
         }
       },
       scales: {
         x: {
-          ticks: { color: '#5C6D6A', font: { family: 'JetBrains Mono', size: 10 }, maxRotation: 45, minRotation: 45 },
-          grid: { color: '#EAEDEB' }
+          ticks: { color: pal.textMuted, font: { family: 'JetBrains Mono', size: 10 }, maxRotation: 45, minRotation: 45 },
+          grid: { color: pal.gridLine }
         },
         y: {
-          ticks: { color: '#5C6D6A', font: { family: 'Inter', size: 10 } },
-          grid: { color: '#EAEDEB' },
-          title: { display: true, text: 'lbs', color: '#5C6D6A', font: { family: 'Inter', size: 11 } }
+          ticks: { color: pal.textMuted, font: { family: 'Inter', size: 10 } },
+          grid: { color: pal.gridLine },
+          title: { display: true, text: 'lbs', color: pal.textMuted, font: { family: 'Inter', size: 11 } }
         }
       }
     }
