@@ -329,6 +329,13 @@ textarea{min-height:56px;resize:vertical;}
         </div>
       </div>
 
+      <div class="field">
+        <label>Phlegm / mucus?</label>
+        <div class="check-row">
+          <div class="check-item"><input type="checkbox" id="f-phlegm"> <span>Yes, phlegm / mucus present</span></div>
+        </div>
+      </div>
+
       <div class="row">
         <div class="field">
           <label>Inhaler — scheduled dose taken?</label>
@@ -426,11 +433,6 @@ textarea{min-height:56px;resize:vertical;}
       </div>
 
       <div class="field">
-        <label>Weight (lbs)</label>
-        <input type="number" id="f-weight" step="0.1" placeholder="e.g. 165.4">
-      </div>
-
-      <div class="field">
         <label>Other notes (triggers, stress, illness, pets, cleaning products, etc.)</label>
         <textarea id="f-notes"></textarea>
       </div>
@@ -449,24 +451,10 @@ textarea{min-height:56px;resize:vertical;}
       <div class="stat"><div class="n" id="stat-avgsev">–</div><div class="l">Avg severity / 7d</div></div>
     </div>
     <div class="chart-wrap">
-      <div class="chart-title">Air quality &amp; temperature — hourly, last 7 days</div>
-      <div style="position:relative;height:180px;">
-        <canvas id="aqTrendChart"></canvas>
-      </div>
-      <div class="err" id="aq-log-note" style="display:none;margin-top:10px;margin-bottom:0;"></div>
-    </div>
-    <div class="chart-wrap">
       <div class="chart-title">Symptom severity &amp; AQI over time</div>
       <div style="position:relative;height:260px;">
         <canvas id="trendChart"></canvas>
       </div>
-    </div>
-    <div class="chart-wrap">
-      <div class="chart-title">Weight over time</div>
-      <div style="position:relative;height:200px;">
-        <canvas id="weightChart"></canvas>
-      </div>
-      <div class="empty" id="weight-empty" style="display:none;padding:12px 0 0;">No weight entries logged yet.</div>
     </div>
     <div style="display:flex;gap:10px;margin-bottom:14px;">
       <a href="/api/export" style="text-decoration:none;">
@@ -488,8 +476,6 @@ let selectedChest = null;
 let selectedShortness = null;
 let rescueCount = 0;
 let trendChartInstance = null;
-let aqTrendChartInstance = null;
-let weightChartInstance = null;
 let editingEntryId = null;
 
 const THEME_KEY = 'wheezer-theme';
@@ -513,10 +499,7 @@ function chartPalette(){
     shortness: '#6BA8E0',
     rescue: '#E27A5F',
     aqi: '#A8BDB8',
-    aqiFill: 'rgba(168,189,184,0.18)',
-    temp: '#E3A75C',
-    weight: '#5CB3AC',
-    weightFill: 'rgba(92,179,172,0.18)'
+    aqiFill: 'rgba(168,189,184,0.18)'
   } : {
     textMuted: '#5C6D6A',
     textStrong: '#1B2B2B',
@@ -528,10 +511,7 @@ function chartPalette(){
     shortness: '#2F6FA8',
     rescue: '#B0432C',
     aqi: '#8FA3A0',
-    aqiFill: 'rgba(143,163,160,0.15)',
-    temp: '#C7822F',
-    weight: '#1D4E4E',
-    weightFill: 'rgba(29,78,78,0.12)'
+    aqiFill: 'rgba(143,163,160,0.15)'
   };
 }
 
@@ -543,8 +523,6 @@ function updateThemeToggleLabel(){
 function refreshChartsForTheme(){
   if (document.getElementById('tab-history').style.display === 'block') {
     renderChart();
-    renderAQChart();
-    renderWeightChart();
   }
 }
 
@@ -723,6 +701,7 @@ function resetEntryForm(){
   document.getElementById('f-cough').checked = false;
   document.getElementById('f-chest').checked = false;
   document.getElementById('f-shortness').checked = false;
+  document.getElementById('f-phlegm').checked = false;
   document.getElementById('sev-wheeze-wrap').style.display = 'none';
   document.getElementById('sev-cough-wrap').style.display = 'none';
   document.getElementById('sev-chest-wrap').style.display = 'none';
@@ -740,7 +719,6 @@ function resetEntryForm(){
   document.getElementById('f-lunch').value='';
   document.getElementById('f-dinner').value='';
   document.getElementById('f-snacks').value='';
-  document.getElementById('f-weight').value='';
   document.getElementById('f-notes').value='';
   rescueCount = 0;
   document.getElementById('rescue-count').textContent = 0;
@@ -777,6 +755,7 @@ document.getElementById('save-btn').addEventListener('click', async ()=>{
     chestSeverity: selectedChest,
     shortness: document.getElementById('f-shortness').checked,
     shortnessSeverity: selectedShortness,
+    phlegm: document.getElementById('f-phlegm').checked,
     scheduled: document.getElementById('f-scheduled').checked,
     rescuePuffs: rescueCount,
     aqi: document.getElementById('f-aqi').value,
@@ -791,7 +770,6 @@ document.getElementById('save-btn').addEventListener('click', async ()=>{
     lunch: document.getElementById('f-lunch').value,
     dinner: document.getElementById('f-dinner').value,
     snacks: document.getElementById('f-snacks').value,
-    weight: document.getElementById('f-weight').value,
     notes: document.getElementById('f-notes').value
   };
 
@@ -834,7 +812,7 @@ function daysAgo(dateStr){
 }
 
 function hasAnySymptom(e){
-  return e.wheeze || e.shortness || e.cough || e.chest || (e.coughSeverity>0) || (e.chestSeverity>0);
+  return e.wheeze || e.shortness || e.cough || e.chest || e.phlegm || (e.coughSeverity>0) || (e.chestSeverity>0);
 }
 
 function maxSeverity(e){
@@ -855,8 +833,6 @@ function renderHistory(){
   document.getElementById('stat-avgsev').textContent = avgSev7;
 
   renderChart();
-  renderAQChart();
-  renderWeightChart();
 
   const list = document.getElementById('entryList');
   if(!entries.length){
@@ -869,6 +845,7 @@ function renderHistory(){
     if(e.cough || e.coughSeverity) tags.push(`<span class="tag">cough ${e.coughSeverity!=null?e.coughSeverity:''}</span>`);
     if(e.chest || e.chestSeverity) tags.push(`<span class="tag">chest tightness ${e.chestSeverity!=null?e.chestSeverity:''}</span>`);
     if(e.shortness) tags.push(`<span class="tag wheeze">shortness of breath ${e.shortnessSeverity!=null?e.shortnessSeverity:''}</span>`);
+    if(e.phlegm) tags.push(`<span class="tag">phlegm / mucus</span>`);
     if(e.scheduled) tags.push(`<span class="tag">scheduled dose</span>`);
     if(e.rescuePuffs>0) tags.push(`<span class="tag">${e.rescuePuffs} rescue puff${e.rescuePuffs>1?'s':''}</span>`);
     if(e.aqi) tags.push(`<span class="tag">AQI ${e.aqi}</span>`);
@@ -878,7 +855,6 @@ function renderHistory(){
     if(e.humidity) tags.push(`<span class="tag">${e.humidity}% humidity</span>`);
     if(e.weather) tags.push(`<span class="tag">${e.weather}</span>`);
     if(e.setting) tags.push(`<span class="tag">${e.setting}</span>`);
-    if(e.weight) tags.push(`<span class="tag">${e.weight} lbs</span>`);
 
     let detail = '';
     if(e.breakfast) detail += `<div><b>Breakfast:</b> ${escapeHtml(e.breakfast)}</div>`;
@@ -901,111 +877,6 @@ function renderHistory(){
       </div>
     </div>`;
   }).join('');
-}
-
-async function renderAQChart(){
-  const noteEl = document.getElementById('aq-log-note');
-  const ctx = document.getElementById('aqTrendChart');
-  noteEl.style.display = 'none';
-
-  let log = [];
-  try {
-    const res = await fetch('/api/air-quality?days=7');
-    log = await res.json();
-  } catch (e) {
-    noteEl.textContent = 'Could not load hourly air quality history.';
-    noteEl.style.display = 'block';
-  }
-
-  if (aqTrendChartInstance) {
-    aqTrendChartInstance.destroy();
-    aqTrendChartInstance = null;
-  }
-
-  if (!log.length) {
-    noteEl.textContent = 'No hourly readings logged. There\'s no background polling — this chart only reflects historical data, if any was collected in the past.';
-    noteEl.style.display = 'block';
-    return;
-  }
-
-  const labels = log.map(r => {
-    const d = new Date(r.timestamp);
-    return d.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' }) + ' ' + d.toLocaleTimeString(undefined, { hour: 'numeric' });
-  });
-  const aqiData = log.map(r => r.aqi ?? null);
-  const tempData = log.map(r => r.tempF ?? null);
-  const pal = chartPalette();
-
-  aqTrendChartInstance = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [
-        {
-          label: 'AQI',
-          data: aqiData,
-          borderColor: pal.aqi,
-          backgroundColor: pal.aqiFill,
-          fill: true,
-          tension: 0.2,
-          pointRadius: 0,
-          borderWidth: 1.5,
-          yAxisID: 'yAqi',
-          spanGaps: true
-        },
-        {
-          label: 'Temp (°F)',
-          data: tempData,
-          borderColor: pal.temp,
-          backgroundColor: pal.temp,
-          fill: false,
-          tension: 0.2,
-          pointRadius: 0,
-          borderWidth: 1.5,
-          yAxisID: 'yTemp',
-          spanGaps: true
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: {
-          display: true,
-          position: 'bottom',
-          labels: { color: pal.textMuted, font: { family: 'Inter', size: 11 }, boxWidth: 12 }
-        },
-        tooltip: {
-          backgroundColor: pal.tooltipBg,
-          titleFont: { family: 'JetBrains Mono', size: 11 },
-          bodyFont: { family: 'Inter', size: 12 }
-        }
-      },
-      scales: {
-        x: {
-          ticks: { color: pal.textMuted, font: { family: 'JetBrains Mono', size: 9 }, maxRotation: 45, minRotation: 45, autoSkip: true, maxTicksLimit: 14 },
-          grid: { display: false }
-        },
-        yAqi: {
-          type: 'linear',
-          position: 'left',
-          min: 0,
-          ticks: { color: pal.textMuted, font: { family: 'Inter', size: 10 } },
-          grid: { color: pal.gridLine },
-          title: { display: true, text: 'AQI', color: pal.textMuted, font: { family: 'Inter', size: 11 } }
-        },
-        yTemp: {
-          type: 'linear',
-          position: 'right',
-          ticks: { color: pal.temp, font: { family: 'Inter', size: 10 } },
-          grid: { drawOnChartArea: false },
-          title: { display: true, text: '°F', color: pal.temp, font: { family: 'Inter', size: 11 } }
-        }
-      }
-    }
-  });
 }
 
 function renderChart(){
@@ -1141,72 +1012,6 @@ function renderChart(){
   });
 }
 
-function renderWeightChart(){
-  const emptyEl = document.getElementById('weight-empty');
-  const ctx = document.getElementById('weightChart');
-
-  if(weightChartInstance){
-    weightChartInstance.destroy();
-    weightChartInstance = null;
-  }
-
-  const weightData = entries
-    .filter(e => e.weight !== undefined && e.weight !== null && e.weight !== '')
-    .map(e => ({ date: e.date, time: e.time, weight: Number(e.weight) }))
-    .sort((a,b) => (a.date + (a.time||'')).localeCompare(b.date + (b.time||'')));
-
-  if(!weightData.length){
-    emptyEl.style.display = 'block';
-    return;
-  }
-  emptyEl.style.display = 'none';
-
-  const labels = weightData.map(w => w.date + (w.time ? ' ' + w.time : ''));
-  const values = weightData.map(w => w.weight);
-  const pal = chartPalette();
-
-  weightChartInstance = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [{
-        label: 'Weight (lbs)',
-        data: values,
-        borderColor: pal.weight,
-        backgroundColor: pal.weightFill,
-        fill: true,
-        tension: 0.25,
-        spanGaps: true,
-        pointRadius: 3
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: pal.tooltipBg,
-          titleFont: { family: 'JetBrains Mono', size: 11 },
-          bodyFont: { family: 'Inter', size: 12 }
-        }
-      },
-      scales: {
-        x: {
-          ticks: { color: pal.textMuted, font: { family: 'JetBrains Mono', size: 10 }, maxRotation: 45, minRotation: 45 },
-          grid: { color: pal.gridLine }
-        },
-        y: {
-          ticks: { color: pal.textMuted, font: { family: 'Inter', size: 10 } },
-          grid: { color: pal.gridLine },
-          title: { display: true, text: 'lbs', color: pal.textMuted, font: { family: 'Inter', size: 11 } }
-        }
-      }
-    }
-  });
-}
-
 function escapeHtml(s){
   const d = document.createElement('div');
   d.textContent = s;
@@ -1249,6 +1054,7 @@ function editEntry(id){
   document.getElementById('sev-chest-wrap').style.display = hasChest ? 'block' : 'none';
   document.getElementById('f-shortness').checked = !!entry.shortness;
   document.getElementById('sev-shortness-wrap').style.display = entry.shortness ? 'block' : 'none';
+  document.getElementById('f-phlegm').checked = !!entry.phlegm;
   document.getElementById('f-scheduled').checked = !!entry.scheduled;
   document.getElementById('f-aqi').value = entry.aqi ?? '';
   document.getElementById('f-aqi-peak').value = entry.aqiPeak ?? '';
@@ -1262,7 +1068,6 @@ function editEntry(id){
   document.getElementById('f-lunch').value = entry.lunch || '';
   document.getElementById('f-dinner').value = entry.dinner || '';
   document.getElementById('f-snacks').value = entry.snacks || '';
-  document.getElementById('f-weight').value = entry.weight ?? '';
   document.getElementById('f-notes').value = entry.notes || '';
 
   rescueCount = Number(entry.rescuePuffs) || 0;

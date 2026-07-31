@@ -6,7 +6,6 @@ const app = express();
 const PORT = process.env.PORT || 8420;
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'entries.json');
-const AQ_LOG_FILE = path.join(DATA_DIR, 'air-quality-log.json');
 
 // Cache zip -> lat/lon lookups in memory so we don't re-geocode every poll
 const geocodeCache = new Map();
@@ -14,7 +13,6 @@ const geocodeCache = new Map();
 // Ensure data dir/files exist
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 if (!fs.existsSync(DATA_FILE)) fs.writeFileSync(DATA_FILE, '[]');
-if (!fs.existsSync(AQ_LOG_FILE)) fs.writeFileSync(AQ_LOG_FILE, '[]');
 
 function readEntries() {
   try {
@@ -31,16 +29,6 @@ function writeEntries(entries) {
   const tmp = DATA_FILE + '.tmp';
   fs.writeFileSync(tmp, JSON.stringify(entries, null, 2));
   fs.renameSync(tmp, DATA_FILE);
-}
-
-function readAQLog() {
-  try {
-    const raw = fs.readFileSync(AQ_LOG_FILE, 'utf8');
-    return JSON.parse(raw || '[]');
-  } catch (e) {
-    console.error('Failed to read air-quality-log.json, starting fresh:', e.message);
-    return [];
-  }
 }
 
 // Current AQI for a zip code via Google's Air Quality API. Requests the
@@ -241,14 +229,6 @@ app.get('/api/aqi', async (req, res) => {
   }
 });
 
-// Hourly AQI history, optionally filtered to the last N days (default 7)
-app.get('/api/air-quality', (req, res) => {
-  const days = Number(req.query.days) || 7;
-  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
-  const log = readAQLog().filter(r => new Date(r.timestamp).getTime() >= cutoff);
-  res.json(log);
-});
-
 // Look up current weather by zip code (server-side, keeps API key private)
 app.get('/api/weather', async (req, res) => {
   const zip = (req.query.zip || '').trim();
@@ -277,12 +257,11 @@ app.get('/api/pollen', async (req, res) => {
   }
 });
 
-// Full export: symptom entries + hourly AQI/weather log, as one JSON file
+// Full export: all symptom entries, as one JSON file
 app.get('/api/export', (req, res) => {
   const payload = {
     exportedAt: new Date().toISOString(),
-    entries: readEntries(),
-    airQualityLog: readAQLog()
+    entries: readEntries()
   };
   const filename = `wheezer-export-${new Date().toISOString().slice(0, 10)}.json`;
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -295,9 +274,9 @@ app.get('/api/export/csv', (req, res) => {
   const entries = readEntries();
   const columns = [
     'date', 'time', 'wheeze', 'wheezeSeverity', 'cough', 'coughSeverity', 'chest', 'chestSeverity',
-    'shortness', 'shortnessSeverity',
+    'shortness', 'shortnessSeverity', 'phlegm',
     'scheduled', 'rescuePuffs', 'aqi', 'aqiPeak', 'pollenLevel', 'pollenIndex', 'tempF', 'humidity',
-    'weather', 'setting', 'breakfast', 'lunch', 'dinner', 'snacks', 'weight', 'notes'
+    'weather', 'setting', 'breakfast', 'lunch', 'dinner', 'snacks', 'notes'
   ];
 
   function csvEscape(val) {
@@ -322,5 +301,4 @@ app.get('/api/export/csv', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Wheezer listening on port ${PORT}`);
   console.log(`Data file: ${DATA_FILE}`);
-  console.log(`Air quality log: ${AQ_LOG_FILE}`);
 });

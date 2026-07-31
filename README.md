@@ -49,17 +49,14 @@ number inputs, so you can always type over the fetched value.
 
 ## Editing and exporting entries
 
-The History tab's "Air quality & temperature — hourly, last 7 days" chart
-reads from `data/air-quality-log.json`.
-
 Each entry in the History tab has an **Edit** link that loads it back into
 the entry form for changes. Saving updates the existing record instead of
 creating a new one (a **Cancel edit** link appears while editing, in case
 you want to back out).
 
 Two export options sit above the entry list:
-- **Export all (JSON)**: symptom entries plus the full hourly AQI/weather
-  log, all in one file. Best for backups or re-importing elsewhere.
+- **Export all (JSON)**: all symptom entries, in one file. Best for backups
+  or re-importing elsewhere.
 - **Export entries (CSV)**: symptom entries only, opens cleanly in Excel,
   Sheets, or Numbers. Useful for bringing a printable log to a doctor's visit.
 
