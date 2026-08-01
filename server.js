@@ -2,6 +2,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const { randomUUID } = require('crypto');
+const { version } = require('./package.json');
 
 const app = express();
 const PORT = process.env.PORT || 8420;
@@ -253,8 +254,9 @@ app.delete('/api/entries/:id', (req, res) => {
   }
 });
 
-// Simple health check for docker-compose healthchecks
-app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
+// Simple health check for docker-compose healthchecks. Reports the version so
+// you can tell which build a running container actually is.
+app.get('/api/health', (req, res) => res.json({ status: 'ok', version }));
 
 // Look up current AQI by zip code (server-side, keeps API key private)
 app.get('/api/aqi', async (req, res) => {

@@ -1,0 +1,72 @@
+[
+  {
+    "name": "bug",
+    "color": "d73a4a",
+    "description": "Something behaves differently than it should"
+  },
+  {
+    "name": "enhancement",
+    "color": "a2eeef",
+    "description": "New feature or an improvement to an existing one"
+  },
+  {
+    "name": "documentation",
+    "color": "0075ca",
+    "description": "README, contributing guide, or comments"
+  },
+  {
+    "name": "security",
+    "color": "b60205",
+    "description": "Anything exploitable, or hardening work"
+  },
+  {
+    "name": "data-loss",
+    "color": "b60205",
+    "description": "Entries corrupted, dropped, or silently overwritten"
+  },
+  {
+    "name": "frontend",
+    "color": "c2e0c6",
+    "description": "The single-page UI in public/index.html"
+  },
+  {
+    "name": "mobile",
+    "color": "fbca04",
+    "description": "Layout or input behaviour on phones"
+  },
+  {
+    "name": "docker",
+    "color": "1d76db",
+    "description": "Image build, compose files, or deployment"
+  },
+  {
+    "name": "external-api",
+    "color": "5319e7",
+    "description": "Google air quality, weather, pollen, or zip lookup"
+  },
+  {
+    "name": "dependencies",
+    "color": "0366d6",
+    "description": "Dependency bumps and vendored assets"
+  },
+  {
+    "name": "good first issue",
+    "color": "7057ff",
+    "description": "Small and self-contained, a decent place to start"
+  },
+  {
+    "name": "help wanted",
+    "color": "008672",
+    "description": "Open to someone picking this up"
+  },
+  {
+    "name": "question",
+    "color": "d876e3",
+    "description": "Needs more detail before it can be worked on"
+  },
+  {
+    "name": "wontfix",
+    "color": "ffffff",
+    "description": "Understood, decided against"
+  }
+]
