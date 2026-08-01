@@ -3,7 +3,10 @@
 Versions follow semver. The git tag is what makes a release; see
 [README](README.md#versioning-and-releases).
 
-## Unreleased
+## 1.1.0
+
+Mostly a security and data-integrity release. Worth reading the first two
+entries before upgrading.
 
 ### Fixed
 
