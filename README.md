@@ -131,7 +131,9 @@ simplest path:
   a container healthcheck already; it's also there for Watchtower monitoring.
 - Chart.js and the webfonts are vendored under `public/vendor/` rather than
   pulled from a CDN, so the app works fully offline and makes no third-party
-  requests — it holds health data.
+  requests — it holds health data. Chart.js is MIT; the fonts are SIL Open Font
+  License 1.1, with the licence text alongside them. See
+  [`public/vendor/README.md`](public/vendor/README.md).
 - If `data/entries.json` is ever corrupt (partial write, full disk), the server
   refuses to read *or* overwrite it and returns a 500 explaining why, rather
   than silently starting from an empty list and destroying your history. Repair
