@@ -139,6 +139,29 @@ simplest path:
   than silently starting from an empty list and destroying your history. Repair
   or move the file, then restart.
 
+## Contributing & releases
+
+Pull requests are welcome — fork the repo and open one against `main`. CI builds
+the image and smoke-tests the container on every PR.
+
+Changes land through review, and images only ever publish from `main`:
+
+- [`.github/CODEOWNERS`](.github/CODEOWNERS) puts every path under owner review.
+- The publish job refuses to run on anything but `main` or a `v*.*.*` tag, so a
+  branch or a fork PR can never push an image. Fork PRs don't receive the Docker
+  Hub secrets regardless.
+- Publishing is gated on the `production` environment, which requires manual
+  approval before the push step runs.
+
+Those last two need matching repo settings to actually bite, since a workflow
+can't grant its own protection:
+
+1. **Settings → Branches → add a rule for `main`**: require a pull request
+   before merging, require approvals, require review from Code Owners, and
+   include administrators (otherwise a direct push still slips through).
+2. **Settings → Environments → `production`**: add yourself as a required
+   reviewer. Optionally restrict it to the `main` branch.
+
 ## License
 
 [MIT](LICENSE)

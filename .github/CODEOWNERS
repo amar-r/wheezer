@@ -1,0 +1,4 @@
+# Every change needs review from the owner.
+# Only takes effect once branch protection on main has "Require review from
+# Code Owners" turned on.
+* @amar-r

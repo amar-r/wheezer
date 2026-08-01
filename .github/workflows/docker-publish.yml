@@ -7,6 +7,10 @@ on:
   pull_request:
     branches: [main]
 
+# Read-only by default; the publish job asks for what it needs.
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Build & smoke test
@@ -54,7 +58,15 @@ jobs:
   publish:
     name: Build & push multi-arch image
     needs: test
-    if: github.event_name == 'push'
+    # Publish only from main or a version tag - never from another branch, and
+    # never from a pull request, including ones opened from forks. Fork PRs
+    # don't get the Docker Hub secrets either way, but be explicit about it.
+    if: >-
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    # Gates the job on manual approval. The reviewer list lives on the
+    # environment in repo settings, not here - see README.
+    environment: production
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
