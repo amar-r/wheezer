@@ -1,5 +1,10 @@
 # Wheezer
 
+[![Docker](https://github.com/amar-r/wheezer/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/amar-r/wheezer/actions/workflows/docker-publish.yml)
+[![Docker image version](https://img.shields.io/docker/v/mrrthr/wheezer?sort=semver&logo=docker&label=image)](https://hub.docker.com/r/mrrthr/wheezer/tags)
+[![Image size](https://img.shields.io/docker/image-size/mrrthr/wheezer/latest?logo=docker&label=size)](https://hub.docker.com/r/mrrthr/wheezer/tags)
+[![License](https://img.shields.io/github/license/amar-r/wheezer)](LICENSE)
+
 Self-hosted wheeze / symptom / environment tracker. Node/Express backend,
 plain HTML+JS frontend, data persisted to a JSON file on a mounted volume.
 
@@ -74,7 +79,7 @@ Two ways to run it:
 curl -O https://raw.githubusercontent.com/amar-r/wheezer/main/compose.yaml
 curl -O https://raw.githubusercontent.com/amar-r/wheezer/main/.env.example
 cp .env.example .env
-# edit .env, set GOOGLE_MAPS_API_KEY (optional — see above)
+# edit .env, set GOOGLE_MAPS_API_KEY (optional, see above)
 mkdir -p data          # see note below
 docker compose up -d
 ```
@@ -131,7 +136,7 @@ simplest path:
   a container healthcheck already; it's also there for Watchtower monitoring.
 - Chart.js and the webfonts are vendored under `public/vendor/` rather than
   pulled from a CDN, so the app works fully offline and makes no third-party
-  requests — it holds health data. Chart.js is MIT; the fonts are SIL Open Font
+  requests. It holds health data. Chart.js is MIT; the fonts are SIL Open Font
   License 1.1, with the licence text alongside them. See
   [`public/vendor/README.md`](public/vendor/README.md).
 - If `data/entries.json` is ever corrupt (partial write, full disk), the server
@@ -139,28 +144,56 @@ simplest path:
   than silently starting from an empty list and destroying your history. Repair
   or move the file, then restart.
 
-## Contributing & releases
+## Versioning and releases
 
-Pull requests are welcome — fork the repo and open one against `main`. CI builds
-the image and smoke-tests the container on every PR.
+Versions are semver, and the git tag is what makes a release. A `v1.2.3`
+tag publishes `1.2.3`, `1.2` and `1` to Docker Hub, so you can pin as
+tightly or as loosely as you like:
 
-Changes land through review, and images only ever publish from `main`:
+```yaml
+image: mrrthr/wheezer:1.2.3   # exact build
+image: mrrthr/wheezer:1.2     # patches only
+image: mrrthr/wheezer:1       # anything backwards compatible
+image: mrrthr/wheezer:latest  # tip of main, may be ahead of any release
+```
 
-- [`.github/CODEOWNERS`](.github/CODEOWNERS) puts every path under owner review.
-- The publish job refuses to run on anything but `main` or a `v*.*.*` tag, so a
-  branch or a fork PR can never push an image. Fork PRs don't receive the Docker
-  Hub secrets regardless.
-- Publishing is gated on the `production` environment, which requires manual
-  approval before the push step runs.
+`latest` tracks `main`, so it can run ahead of the newest tag. Pin to a
+number if you want to control when you move.
 
-Those last two need matching repo settings to actually bite, since a workflow
-can't grant its own protection:
+Cutting a release:
 
-1. **Settings → Branches → add a rule for `main`**: require a pull request
-   before merging, require approvals, require review from Code Owners, and
-   include administrators (otherwise a direct push still slips through).
-2. **Settings → Environments → `production`**: add yourself as a required
-   reviewer. Optionally restrict it to the `main` branch.
+1. Bump `version` in `package.json` and add the entry to
+   [CHANGELOG.md](CHANGELOG.md).
+2. Merge that to `main`.
+3. Tag it and push the tag:
+   ```
+   git tag v1.2.3
+   git push origin v1.2.3
+   ```
+
+CI refuses to publish a tag whose version disagrees with `package.json`,
+so the two can't drift apart. `GET /api/health` reports the running
+version, which is the quickest way to see what a container actually is.
+
+The version badge at the top reads the highest semver tag on Docker Hub,
+so it shows the newest release rather than whatever `latest` points at.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Pull requests are welcome; fork
+the repo and open one against `main`.
+
+Every path is covered by [CODEOWNERS](.github/CODEOWNERS), and images
+publish only from `main` or a `v*.*.*` tag, gated on the `production`
+environment. Two repo settings have to be on for any of that to bite,
+because a workflow can't grant its own protection:
+
+1. Settings, then Branches, then a rule for `main`: require a pull
+   request, require approvals, require review from Code Owners, and
+   include administrators. Without that last one a direct push still
+   goes straight through.
+2. Settings, then Environments, then `production`: add yourself as a
+   required reviewer.
 
 ## License
 

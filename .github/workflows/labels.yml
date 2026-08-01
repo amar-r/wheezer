@@ -1,0 +1,33 @@
+name: Labels
+
+# Labels are defined in .github/labels.json and applied from here, so the
+# set is reproducible instead of hand-edited in the GitHub UI.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/labels.json'
+      - '.github/workflows/labels.yml'
+
+permissions:
+  issues: write
+
+jobs:
+  sync:
+    name: Sync labels
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply labels.json
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          jq -c '.[]' .github/labels.json | while read -r row; do
+            name=$(jq -r '.name' <<<"$row")
+            color=$(jq -r '.color' <<<"$row")
+            desc=$(jq -r '.description' <<<"$row")
+            # --force updates a label that already exists
+            gh label create "$name" --color "$color" --description "$desc" --force
+          done

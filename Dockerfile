@@ -1,4 +1,6 @@
-FROM node:20-alpine
+# Node 20 went end of life on 2026-04-30 and stopped getting security fixes,
+# which is where most base-image CVEs come from. 24 is active LTS until 2028.
+FROM node:24-alpine
 
 WORKDIR /app
 
