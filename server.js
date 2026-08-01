@@ -12,6 +12,20 @@ const DATA_FILE = path.join(DATA_DIR, 'entries.json');
 // Cache zip -> lat/lon lookups in memory so we don't re-geocode every poll
 const geocodeCache = new Map();
 
+// Refuse to keep growing the entry file without bound. Normal use is a handful
+// of entries a day, so this is unreachable by hand — it's here so a stuck
+// client or a loop on the network can't fill the disk.
+const MAX_ENTRIES = Number(process.env.MAX_ENTRIES || 50000);
+
+// Google's error bodies can carry backend detail (project number, quota state)
+// and these messages get handed straight to the browser. Keep the full text in
+// the server log, where it's useful, and let the caller see only the status.
+async function upstreamError(label, r) {
+  const body = await r.text();
+  console.error(`${label} returned ${r.status}: ${body.slice(0, 500)}`);
+  return new Error(`${label} is unavailable right now (HTTP ${r.status})`);
+}
+
 // Ensure data dir/files exist
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 if (!fs.existsSync(DATA_FILE)) fs.writeFileSync(DATA_FILE, '[]');
@@ -69,10 +83,7 @@ async function fetchAirQuality(zip) {
       customLocalAqis: [{ regionCode: 'US', aqi: 'USA_EPA' }]
     })
   });
-  if (!r.ok) {
-    const body = await r.text();
-    throw new Error(`Google Air Quality API returned ${r.status}: ${body.slice(0, 200)}`);
-  }
+  if (!r.ok) throw await upstreamError('Google Air Quality API', r);
   const data = await r.json();
   const indexes = data.indexes || [];
   const epa = indexes.find(i => i.code === 'usa_epa') || indexes[0];
@@ -119,10 +130,7 @@ async function fetchWeather(zip) {
     `&location.latitude=${lat}&location.longitude=${lon}&unitsSystem=IMPERIAL`;
 
   const r = await fetch(url);
-  if (!r.ok) {
-    const body = await r.text();
-    throw new Error(`Google Weather API returned ${r.status}: ${body.slice(0, 200)}`);
-  }
+  if (!r.ok) throw await upstreamError('Google Weather API', r);
   const data = await r.json();
   if (!data.temperature) throw new Error('Google Weather API response missing current conditions');
 
@@ -151,10 +159,7 @@ async function fetchPollen(zip) {
     `&location.latitude=${lat}&location.longitude=${lon}&days=1`;
 
   const r = await fetch(url);
-  if (!r.ok) {
-    const body = await r.text();
-    throw new Error(`Google Pollen API returned ${r.status}: ${body.slice(0, 200)}`);
-  }
+  if (!r.ok) throw await upstreamError('Google Pollen API', r);
   const data = await r.json();
   const today = data.dailyInfo && data.dailyInfo[0];
   if (!today || !today.pollenTypeInfo) {
@@ -192,7 +197,35 @@ async function fetchPollen(zip) {
   };
 }
 
-app.use(express.json());
+// An entry is a couple dozen short fields, so 32kb is generous for one and well
+// under Express's 100kb default — a client can't push large payloads at us.
+app.use(express.json({ limit: '32kb' }));
+
+// Scripts, styles and fonts are all vendored under public/vendor and served from
+// this origin, so a same-origin policy costs nothing here. 'unsafe-inline' is
+// unavoidable while the page keeps its <script>/<style> blocks inline, which
+// blunts the anti-XSS value — but connect-src still stops injected code from
+// shipping entries off to another host, and frame-ancestors blocks clickjacking.
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data:",
+  "font-src 'self'",
+  "connect-src 'self'",
+  "frame-ancestors 'none'",
+  "base-uri 'none'",
+  "form-action 'none'",
+  "object-src 'none'"
+].join('; ');
+
+app.use((req, res, next) => {
+  res.setHeader('Content-Security-Policy', CSP);
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Entries created before the switch to UUIDs have numeric ids, and ids arrive
@@ -212,6 +245,11 @@ app.get('/api/entries', (req, res) => {
 app.post('/api/entries', (req, res) => {
   try {
     const entries = readEntries();
+    if (entries.length >= MAX_ENTRIES) {
+      return res.status(507).json({
+        error: `Entry limit reached (${MAX_ENTRIES}). Delete old entries or raise MAX_ENTRIES.`
+      });
+    }
     // id last: the body must never be able to choose its own id, or a client
     // can collide with (and later delete) an existing entry.
     const entry = { ...req.body, id: randomUUID() };
@@ -258,8 +296,43 @@ app.delete('/api/entries/:id', (req, res) => {
 // you can tell which build a running container actually is.
 app.get('/api/health', (req, res) => res.json({ status: 'ok', version }));
 
+// The three lookup endpoints below each spend real money against the Google
+// Maps Platform quota, and anything on the network can reach them unauthenticated.
+// A fixed window per client IP keeps a runaway script or a compromised device
+// from looping on them. The hard ceiling on spend is the quota configured in the
+// Google Cloud console — this is only the local backstop.
+const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
+const RATE_LIMIT_MAX = Number(process.env.LOOKUP_RATE_LIMIT || 30);
+const rateBuckets = new Map();
+
+function rateLimitLookups(req, res, next) {
+  const now = Date.now();
+  let bucket = rateBuckets.get(req.ip);
+  if (!bucket || now >= bucket.resetAt) {
+    bucket = { count: 0, resetAt: now + RATE_LIMIT_WINDOW_MS };
+    rateBuckets.set(req.ip, bucket);
+  }
+  bucket.count++;
+  if (bucket.count > RATE_LIMIT_MAX) {
+    const retryAfter = Math.ceil((bucket.resetAt - now) / 1000);
+    res.setHeader('Retry-After', String(retryAfter));
+    return res.status(429).json({ error: `Too many lookups — try again in ${retryAfter}s.` });
+  }
+  next();
+}
+
+// Buckets are keyed by IP, so left alone this map grows for the life of the
+// process — the same unbounded-growth problem it exists to prevent. unref() so
+// a pending sweep never holds the process open on shutdown.
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, bucket] of rateBuckets) {
+    if (now >= bucket.resetAt) rateBuckets.delete(ip);
+  }
+}, RATE_LIMIT_WINDOW_MS).unref();
+
 // Look up current AQI by zip code (server-side, keeps API key private)
-app.get('/api/aqi', async (req, res) => {
+app.get('/api/aqi', rateLimitLookups, async (req, res) => {
   const zip = (req.query.zip || '').trim();
 
   if (!zip || !/^\d{5}$/.test(zip)) {
@@ -274,7 +347,7 @@ app.get('/api/aqi', async (req, res) => {
 });
 
 // Look up current weather by zip code (server-side, keeps API key private)
-app.get('/api/weather', async (req, res) => {
+app.get('/api/weather', rateLimitLookups, async (req, res) => {
   const zip = (req.query.zip || '').trim();
   if (!zip || !/^\d{5}$/.test(zip)) {
     return res.status(400).json({ error: 'Provide a 5-digit zip code, e.g. ?zip=10001' });
@@ -288,7 +361,7 @@ app.get('/api/weather', async (req, res) => {
 });
 
 // Look up current pollen levels by zip code (server-side, keeps API key private)
-app.get('/api/pollen', async (req, res) => {
+app.get('/api/pollen', rateLimitLookups, async (req, res) => {
   const zip = (req.query.zip || '').trim();
   if (!zip || !/^\d{5}$/.test(zip)) {
     return res.status(400).json({ error: 'Provide a 5-digit zip code, e.g. ?zip=10001' });

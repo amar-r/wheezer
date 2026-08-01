@@ -3,6 +3,29 @@
 Versions follow semver. The git tag is what makes a release; see
 [README](README.md#versioning-and-releases).
 
+## Unreleased
+
+### Security
+
+- The AQI, weather and pollen lookups are now rate limited per client IP,
+  default 30 per 5 minutes (`LOOKUP_RATE_LIMIT`). Each one spends against your
+  Google Maps Platform quota and none of them require auth, so a loop on your
+  network could previously run up a real bill. Set a daily quota cap in the
+  Google Cloud console too — that, not this, is what actually bounds spend.
+- Google's error responses are no longer passed through to the browser. They
+  can name the service and the state of your API key; the full text now goes to
+  the server log and the caller sees only an HTTP status.
+- Added `Content-Security-Policy`, `X-Content-Type-Options` and
+  `Referrer-Policy` headers. Everything the page loads is already served from
+  this origin, so the policy costs nothing. It still needs `'unsafe-inline'`
+  for the page's inline script and style blocks.
+
+### Changed
+
+- Stored entries are capped (`MAX_ENTRIES`, default 50000) and request bodies
+  are limited to 32kb, down from Express's 100kb default. Normal use won't come
+  near either; they're here so a stuck client can't fill the disk.
+
 ## 1.1.0
 
 Mostly a security and data-integrity release. Worth reading the first two
