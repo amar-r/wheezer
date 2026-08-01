@@ -1,6 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const { randomUUID } = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 8420;
@@ -14,14 +15,32 @@ const geocodeCache = new Map();
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 if (!fs.existsSync(DATA_FILE)) fs.writeFileSync(DATA_FILE, '[]');
 
+// Never fall back to an empty list here. Returning [] on a parse failure and
+// then letting a later write persist it is a silent, unrecoverable wipe of
+// every entry. Throwing instead leaves the bad file untouched on disk, so it
+// stays recoverable by hand.
 function readEntries() {
+  const raw = fs.readFileSync(DATA_FILE, 'utf8');
+  let parsed;
   try {
-    const raw = fs.readFileSync(DATA_FILE, 'utf8');
-    return JSON.parse(raw || '[]');
+    parsed = JSON.parse(raw || '[]');
   } catch (e) {
-    console.error('Failed to read entries.json, starting fresh:', e.message);
-    return [];
+    throw new Error(
+      `${DATA_FILE} is not valid JSON (${e.message}). Refusing to read or ` +
+      `overwrite it so your entries stay recoverable — repair or move the file, ` +
+      `then restart.`
+    );
   }
+  if (!Array.isArray(parsed)) {
+    throw new Error(`${DATA_FILE} does not contain a JSON array. Refusing to overwrite it.`);
+  }
+  return parsed;
+}
+
+// Any read failure means we must not write: reply 500 and leave the file be.
+function dataError(res, e) {
+  console.error(e.message);
+  res.status(500).json({ error: e.message });
 }
 
 function writeEntries(entries) {
@@ -175,40 +194,63 @@ async function fetchPollen(zip) {
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Entries created before the switch to UUIDs have numeric ids, and ids arrive
+// from the URL as strings, so always compare stringified.
+const sameId = (a, b) => String(a) === String(b);
+
 // GET all entries
 app.get('/api/entries', (req, res) => {
-  res.json(readEntries());
+  try {
+    res.json(readEntries());
+  } catch (e) {
+    dataError(res, e);
+  }
 });
 
 // POST a new entry
 app.post('/api/entries', (req, res) => {
-  const entries = readEntries();
-  const entry = { id: Date.now(), ...req.body };
-  entries.unshift(entry);
-  writeEntries(entries);
-  res.status(201).json(entry);
+  try {
+    const entries = readEntries();
+    // id last: the body must never be able to choose its own id, or a client
+    // can collide with (and later delete) an existing entry.
+    const entry = { ...req.body, id: randomUUID() };
+    entries.unshift(entry);
+    writeEntries(entries);
+    res.status(201).json(entry);
+  } catch (e) {
+    dataError(res, e);
+  }
 });
 
 // PUT (update) an existing entry by id
 app.put('/api/entries/:id', (req, res) => {
-  const id = Number(req.params.id);
-  const entries = readEntries();
-  const idx = entries.findIndex(e => e.id === id);
-  if (idx === -1) {
-    return res.status(404).json({ error: 'Entry not found' });
+  try {
+    const entries = readEntries();
+    const idx = entries.findIndex(e => sameId(e.id, req.params.id));
+    if (idx === -1) {
+      return res.status(404).json({ error: 'Entry not found' });
+    }
+    entries[idx] = { ...entries[idx], ...req.body, id: entries[idx].id };
+    writeEntries(entries);
+    res.json(entries[idx]);
+  } catch (e) {
+    dataError(res, e);
   }
-  entries[idx] = { ...entries[idx], ...req.body, id }; // id is never overwritten by the body
-  writeEntries(entries);
-  res.json(entries[idx]);
 });
 
 // DELETE an entry by id
 app.delete('/api/entries/:id', (req, res) => {
-  const id = Number(req.params.id);
-  let entries = readEntries();
-  entries = entries.filter(e => e.id !== id);
-  writeEntries(entries);
-  res.status(204).end();
+  try {
+    const entries = readEntries();
+    const remaining = entries.filter(e => !sameId(e.id, req.params.id));
+    if (remaining.length === entries.length) {
+      return res.status(404).json({ error: 'Entry not found' });
+    }
+    writeEntries(remaining);
+    res.status(204).end();
+  } catch (e) {
+    dataError(res, e);
+  }
 });
 
 // Simple health check for docker-compose healthchecks
@@ -259,10 +301,13 @@ app.get('/api/pollen', async (req, res) => {
 
 // Full export: all symptom entries, as one JSON file
 app.get('/api/export', (req, res) => {
-  const payload = {
-    exportedAt: new Date().toISOString(),
-    entries: readEntries()
-  };
+  let entries;
+  try {
+    entries = readEntries();
+  } catch (e) {
+    return dataError(res, e);
+  }
+  const payload = { exportedAt: new Date().toISOString(), entries };
   const filename = `wheezer-export-${new Date().toISOString().slice(0, 10)}.json`;
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
   res.setHeader('Content-Type', 'application/json');
@@ -271,7 +316,12 @@ app.get('/api/export', (req, res) => {
 
 // CSV export of symptom entries only, for spreadsheets or sharing with a doctor
 app.get('/api/export/csv', (req, res) => {
-  const entries = readEntries();
+  let entries;
+  try {
+    entries = readEntries();
+  } catch (e) {
+    return dataError(res, e);
+  }
   const columns = [
     'date', 'time', 'wheeze', 'wheezeSeverity', 'cough', 'coughSeverity', 'chest', 'chestSeverity',
     'shortness', 'shortnessSeverity', 'phlegm',
@@ -281,7 +331,11 @@ app.get('/api/export/csv', (req, res) => {
 
   function csvEscape(val) {
     if (val === undefined || val === null) return '';
-    const s = String(val);
+    let s = String(val);
+    // Excel/Sheets treat a leading =, +, - or @ as a formula, so a notes field
+    // like "=HYPERLINK(...)" would execute on open. Prefix with an apostrophe
+    // to force it back to plain text.
+    if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
     if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
     return s;
   }

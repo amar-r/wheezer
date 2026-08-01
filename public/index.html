@@ -10,10 +10,9 @@
   if (saved === 'light' || saved === 'dark') document.documentElement.dataset.theme = saved;
 })();
 </script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="vendor/chart.umd.min.js"></script>
+<link rel="stylesheet" href="vendor/fonts.css">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
-
 :root{
   color-scheme: light dark;
   --paper:#F3F5F4;
@@ -218,6 +217,56 @@ textarea{min-height:56px;resize:vertical;}
   cursor:pointer;
 }
 .theme-toggle:hover{color:var(--teal);border-color:var(--teal);}
+
+.entry-actions{margin-top:8px;}
+.entry-sep{color:var(--line);margin:0 8px;}
+.chart-box{position:relative;height:260px;}
+
+/* Keep iOS from re-scaling text on orientation change, and make sure nothing
+   can push the page wider than the viewport. */
+html{-webkit-text-size-adjust:100%;}
+body{overflow-x:hidden;}
+canvas,svg,img{max-width:100%;}
+
+@media (max-width:640px){
+  /* iOS Safari zooms the page in whenever you focus an input whose font-size
+     is under 16px, and never fully zooms back out — that zoom is what makes
+     the layout appear to shift around. 16px is the threshold that stops it. */
+  input[type=text],input[type=date],input[type=time],input[type=number],textarea,select{
+    font-size:16px;
+  }
+
+  header{padding:26px 16px 18px;}
+  h1{font-size:1.55rem;}
+  .sub{font-size:0.88rem;margin-bottom:14px;}
+  .wave{height:32px;}
+  .wrap{padding:0 16px;}
+  .card{padding:16px;}
+  .chart-wrap{padding:14px 12px;}
+  /* Taller on mobile: the legend wraps to more rows at narrow widths and would
+     otherwise eat into the plot area. */
+  .chart-box{height:320px;}
+
+  /* min-width:140px on a flex child can't shrink below its floor, which is
+     what overflows the row on a narrow screen. */
+  .row{gap:10px;}
+  .row > .field{min-width:0;}
+  .stats-row{gap:8px;}
+  .stat{min-width:0;flex:1 1 calc(50% - 4px);padding:12px 14px;}
+  .stat .n{font-size:1.3rem;}
+
+  /* Comfortable tap targets */
+  .sev-btn{padding:13px 0;}
+  .count-input button{width:38px;height:38px;}
+  .check-item{padding:2px 0;}
+  .check-item input[type=checkbox]{width:18px;height:18px;}
+  .btn-primary{padding:13px 20px;white-space:normal;}
+  .del{padding:6px 0;}
+
+  .theme-toggle{top:10px;right:10px;padding:5px 11px;}
+  .tabs{margin:20px 0 16px;}
+  .tab{margin-right:14px;}
+}
 </style>
 </head>
 <body>
@@ -452,7 +501,7 @@ textarea{min-height:56px;resize:vertical;}
     </div>
     <div class="chart-wrap">
       <div class="chart-title">Symptom severity &amp; AQI over time</div>
-      <div style="position:relative;height:260px;">
+      <div class="chart-box">
         <canvas id="trendChart"></canvas>
       </div>
     </div>
@@ -497,7 +546,8 @@ function chartPalette(){
     cough: '#78C4BD',
     chest: '#B98BD1',
     shortness: '#6BA8E0',
-    rescue: '#E27A5F',
+    phlegm: '#8FCF7A',
+    scheduled: '#C9B26B',
     aqi: '#A8BDB8',
     aqiFill: 'rgba(168,189,184,0.18)'
   } : {
@@ -509,7 +559,8 @@ function chartPalette(){
     cough: '#3F6E6C',
     chest: '#8B5FA3',
     shortness: '#2F6FA8',
-    rescue: '#B0432C',
+    phlegm: '#4E8B3C',
+    scheduled: '#8A7320',
     aqi: '#8FA3A0',
     aqiFill: 'rgba(143,163,160,0.15)'
   };
@@ -783,7 +834,7 @@ document.getElementById('save-btn').addEventListener('click', async ()=>{
   btn.disabled = true;
   try{
     const isEditing = editingEntryId !== null;
-    const url = isEditing ? '/api/entries/' + editingEntryId : '/api/entries';
+    const url = isEditing ? '/api/entries/' + encodeURIComponent(editingEntryId) : '/api/entries';
     const method = isEditing ? 'PUT' : 'POST';
     const res = await fetch(url, {
       method,
@@ -805,14 +856,24 @@ document.getElementById('save-btn').addEventListener('click', async ()=>{
   document.querySelector('.tab[data-tab="history"]').click();
 });
 
+// Recomputed per call rather than against a `now` captured at page load, so a
+// tab left open overnight doesn't keep scoring against yesterday's date.
 function daysAgo(dateStr){
   const d = new Date(dateStr+'T00:00:00');
-  const diff = (now - d) / (1000*60*60*24);
-  return diff;
+  return (Date.now() - d) / (1000*60*60*24);
+}
+
+// A future-dated entry yields a negative age, which would slip past a bare
+// `<= 7`; require it to be in the past too.
+function withinDays(dateStr, days){
+  const age = daysAgo(dateStr);
+  return age >= 0 && age <= days;
 }
 
 function hasAnySymptom(e){
-  return e.wheeze || e.shortness || e.cough || e.chest || e.phlegm || (e.coughSeverity>0) || (e.chestSeverity>0);
+  return e.wheeze || e.shortness || e.cough || e.chest || e.phlegm ||
+    (e.wheezeSeverity>0) || (e.coughSeverity>0) ||
+    (e.chestSeverity>0) || (e.shortnessSeverity>0);
 }
 
 function maxSeverity(e){
@@ -820,10 +881,10 @@ function maxSeverity(e){
 }
 
 function renderHistory(){
-  const symptom7 = new Set(entries.filter(e=>hasAnySymptom(e) && daysAgo(e.date)<=7).map(e=>e.date)).size;
-  const symptom14 = new Set(entries.filter(e=>hasAnySymptom(e) && daysAgo(e.date)<=14).map(e=>e.date)).size;
-  const rescue7 = entries.filter(e=>daysAgo(e.date)<=7).reduce((s,e)=>s+(parseInt(e.rescuePuffs)||0),0);
-  const recent7 = entries.filter(e=>daysAgo(e.date)<=7);
+  const symptom7 = new Set(entries.filter(e=>hasAnySymptom(e) && withinDays(e.date,7)).map(e=>e.date)).size;
+  const symptom14 = new Set(entries.filter(e=>hasAnySymptom(e) && withinDays(e.date,14)).map(e=>e.date)).size;
+  const rescue7 = entries.filter(e=>withinDays(e.date,7)).reduce((s,e)=>s+(parseInt(e.rescuePuffs)||0),0);
+  const recent7 = entries.filter(e=>withinDays(e.date,7));
   const avgSev7 = recent7.length
     ? (recent7.reduce((s,e)=>s+maxSeverity(e),0) / recent7.length).toFixed(1)
     : '–';
@@ -839,45 +900,60 @@ function renderHistory(){
     list.innerHTML = '<div class="empty">No entries logged yet. Add your first one above.</div>';
     return;
   }
+  // Every value below is user-entered and goes through innerHTML, so all of it
+  // has to be escaped — not just the free-text meal/notes fields.
   list.innerHTML = entries.map(e=>{
+    const esc = escapeHtml;
+    const sev = v => v != null ? esc(v) : '';
     const tags = [];
-    if(e.wheeze) tags.push(`<span class="tag wheeze">wheeze ${e.wheezeSeverity!=null?e.wheezeSeverity:''}</span>`);
-    if(e.cough || e.coughSeverity) tags.push(`<span class="tag">cough ${e.coughSeverity!=null?e.coughSeverity:''}</span>`);
-    if(e.chest || e.chestSeverity) tags.push(`<span class="tag">chest tightness ${e.chestSeverity!=null?e.chestSeverity:''}</span>`);
-    if(e.shortness) tags.push(`<span class="tag wheeze">shortness of breath ${e.shortnessSeverity!=null?e.shortnessSeverity:''}</span>`);
+    if(e.wheeze) tags.push(`<span class="tag wheeze">wheeze ${sev(e.wheezeSeverity)}</span>`);
+    if(e.cough || e.coughSeverity) tags.push(`<span class="tag">cough ${sev(e.coughSeverity)}</span>`);
+    if(e.chest || e.chestSeverity) tags.push(`<span class="tag">chest tightness ${sev(e.chestSeverity)}</span>`);
+    if(e.shortness) tags.push(`<span class="tag wheeze">shortness of breath ${sev(e.shortnessSeverity)}</span>`);
     if(e.phlegm) tags.push(`<span class="tag">phlegm / mucus</span>`);
     if(e.scheduled) tags.push(`<span class="tag">scheduled dose</span>`);
-    if(e.rescuePuffs>0) tags.push(`<span class="tag">${e.rescuePuffs} rescue puff${e.rescuePuffs>1?'s':''}</span>`);
-    if(e.aqi) tags.push(`<span class="tag">AQI ${e.aqi}</span>`);
-    if(e.aqiPeak) tags.push(`<span class="tag">peak AQI ${e.aqiPeak}</span>`);
-    if(e.pollenLevel) tags.push(`<span class="tag">pollen: ${e.pollenLevel}</span>`);
-    if(e.tempF) tags.push(`<span class="tag">${e.tempF}°F</span>`);
-    if(e.humidity) tags.push(`<span class="tag">${e.humidity}% humidity</span>`);
-    if(e.weather) tags.push(`<span class="tag">${e.weather}</span>`);
-    if(e.setting) tags.push(`<span class="tag">${e.setting}</span>`);
+    if(e.rescuePuffs>0) tags.push(`<span class="tag">${esc(e.rescuePuffs)} rescue puff${e.rescuePuffs>1?'s':''}</span>`);
+    if(e.aqi) tags.push(`<span class="tag">AQI ${esc(e.aqi)}</span>`);
+    if(e.aqiPeak) tags.push(`<span class="tag">peak AQI ${esc(e.aqiPeak)}</span>`);
+    if(e.pollenLevel) tags.push(`<span class="tag">pollen: ${esc(e.pollenLevel)}</span>`);
+    if(e.tempF) tags.push(`<span class="tag">${esc(e.tempF)}°F</span>`);
+    if(e.humidity) tags.push(`<span class="tag">${esc(e.humidity)}% humidity</span>`);
+    if(e.weather) tags.push(`<span class="tag">${esc(e.weather)}</span>`);
+    if(e.setting) tags.push(`<span class="tag">${esc(e.setting)}</span>`);
 
     let detail = '';
-    if(e.breakfast) detail += `<div><b>Breakfast:</b> ${escapeHtml(e.breakfast)}</div>`;
-    if(e.lunch) detail += `<div><b>Lunch:</b> ${escapeHtml(e.lunch)}</div>`;
-    if(e.dinner) detail += `<div><b>Dinner:</b> ${escapeHtml(e.dinner)}</div>`;
-    if(e.snacks) detail += `<div><b>Snacks:</b> ${escapeHtml(e.snacks)}</div>`;
-    if(e.notes) detail += `<div><b>Notes:</b> ${escapeHtml(e.notes)}</div>`;
+    if(e.breakfast) detail += `<div><b>Breakfast:</b> ${esc(e.breakfast)}</div>`;
+    if(e.lunch) detail += `<div><b>Lunch:</b> ${esc(e.lunch)}</div>`;
+    if(e.dinner) detail += `<div><b>Dinner:</b> ${esc(e.dinner)}</div>`;
+    if(e.snacks) detail += `<div><b>Snacks:</b> ${esc(e.snacks)}</div>`;
+    if(e.notes) detail += `<div><b>Notes:</b> ${esc(e.notes)}</div>`;
 
     return `<div class="entry">
       <div class="entry-top">
-        <span class="entry-date">${e.date}</span>
-        <span class="entry-time">${e.time||''}</span>
+        <span class="entry-date">${esc(e.date||'')}</span>
+        <span class="entry-time">${esc(e.time||'')}</span>
       </div>
       <div class="tag-row">${tags.join('')}</div>
       <div class="entry-detail">${detail}</div>
-      <div style="margin-top:8px;">
-        <button class="del" onclick="editEntry(${e.id})">Edit</button>
-        <span style="color:var(--line);margin:0 8px;">·</span>
-        <button class="del" onclick="deleteEntry(${e.id})">Delete</button>
+      <div class="entry-actions">
+        <button class="del" data-action="edit" data-id="${esc(e.id)}">Edit</button>
+        <span class="entry-sep">·</span>
+        <button class="del" data-action="delete" data-id="${esc(e.id)}">Delete</button>
       </div>
     </div>`;
   }).join('');
 }
+
+// Delegated so entry ids never have to be interpolated into inline JS.
+document.getElementById('entryList').addEventListener('click', (ev) => {
+  const btn = ev.target.closest('button[data-action]');
+  if (!btn) return;
+  const id = btn.dataset.id;
+  if (btn.dataset.action === 'edit') editEntry(id);
+  else if (btn.dataset.action === 'delete') deleteEntry(id);
+});
+
+const YES_NO_SERIES = new Set(['Phlegm (present)', 'Scheduled dose taken']);
 
 function renderChart(){
   const chartData = entries.slice(0, 20).reverse();
@@ -898,7 +974,11 @@ function renderChart(){
   const chestData = chartData.map(e => e.chestSeverity ?? null);
   const shortnessData = chartData.map(e => e.shortnessSeverity ?? null);
   const aqiData = chartData.map(e => e.aqi ? Number(e.aqi) : null);
-  const rescueData = chartData.map(e => e.rescuePuffs ? Number(e.rescuePuffs) : null);
+  // Phlegm and the scheduled inhaler dose are yes/no checkboxes, so "absent" is
+  // real information rather than a gap — plot them as stepped 0/1 lines instead
+  // of leaving nulls.
+  const phlegmData = chartData.map(e => e.phlegm ? 1 : 0);
+  const scheduledData = chartData.map(e => e.scheduled ? 1 : 0);
   const pal = chartPalette();
 
   trendChartInstance = new Chart(ctx, {
@@ -947,14 +1027,22 @@ function renderChart(){
           pointRadius: 3
         },
         {
-          label: 'Rescue puffs',
-          data: rescueData,
-          borderColor: pal.rescue,
-          backgroundColor: pal.rescue,
+          label: 'Phlegm (present)',
+          data: phlegmData,
+          borderColor: pal.phlegm,
+          backgroundColor: pal.phlegm,
           yAxisID: 'ySev',
+          stepped: true,
+          pointRadius: 2
+        },
+        {
+          label: 'Scheduled dose taken',
+          data: scheduledData,
+          borderColor: pal.scheduled,
+          backgroundColor: pal.scheduled,
+          yAxisID: 'ySev',
+          stepped: true,
           borderDash: [4,3],
-          tension: 0.1,
-          spanGaps: true,
           pointRadius: 2
         },
         {
@@ -982,7 +1070,17 @@ function renderChart(){
         tooltip: {
           backgroundColor: pal.tooltipBg,
           titleFont: { family: 'JetBrains Mono', size: 11 },
-          bodyFont: { family: 'Inter', size: 12 }
+          bodyFont: { family: 'Inter', size: 12 },
+          callbacks: {
+            // The two checkbox series are plotted as 0/1; show them as Yes/No.
+            label: (ctx) => {
+              const v = ctx.parsed.y;
+              if (YES_NO_SERIES.has(ctx.dataset.label)) {
+                return `${ctx.dataset.label}: ${v ? 'Yes' : 'No'}`;
+              }
+              return `${ctx.dataset.label}: ${v}`;
+            }
+          }
         }
       },
       scales: {
@@ -997,7 +1095,7 @@ function renderChart(){
           suggestedMax: 5,
           ticks: { color: pal.textMuted, font: { family: 'Inter', size: 10 }, stepSize: 1 },
           grid: { color: pal.gridLine },
-          title: { display: true, text: 'Severity / puffs (0–5)', color: pal.textMuted, font: { family: 'Inter', size: 11 } }
+          title: { display: true, text: 'Severity 0–5 · yes/no 0–1', color: pal.textMuted, font: { family: 'Inter', size: 11 } }
         },
         yAqi: {
           type: 'linear',
@@ -1020,13 +1118,12 @@ function escapeHtml(s){
 
 async function deleteEntry(id){
   try{
-    await fetch('/api/entries/' + id, { method: 'DELETE' });
+    await fetch('/api/entries/' + encodeURIComponent(id), { method: 'DELETE' });
   }catch(e){
     console.error('Failed to delete', e);
   }
   await loadEntries();
 }
-window.deleteEntry = deleteEntry;
 
 function selectSeverityButton(containerId, value){
   document.querySelectorAll('#'+containerId+' .sev-btn').forEach(b=>{
@@ -1035,7 +1132,9 @@ function selectSeverityButton(containerId, value){
 }
 
 function editEntry(id){
-  const entry = entries.find(e => e.id === id);
+  // Ids are UUID strings now but older entries have numeric ids, and the id
+  // arrives from a data attribute as a string either way.
+  const entry = entries.find(e => String(e.id) === String(id));
   if(!entry) return;
 
   editingEntryId = id;
@@ -1085,7 +1184,6 @@ function editEntry(id){
 
   document.querySelector('.tab[data-tab="entry"]').click();
 }
-window.editEntry = editEntry;
 
 loadEntries();
 </script>

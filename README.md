@@ -75,6 +75,7 @@ curl -O https://raw.githubusercontent.com/amar-r/wheezer/main/compose.yaml
 curl -O https://raw.githubusercontent.com/amar-r/wheezer/main/.env.example
 cp .env.example .env
 # edit .env, set GOOGLE_MAPS_API_KEY (optional — see above)
+mkdir -p data          # see note below
 docker compose up -d
 ```
 
@@ -84,8 +85,15 @@ docker compose up -d
 git clone https://github.com/amar-r/wheezer.git
 cd wheezer
 cp .env.example .env
+mkdir -p data          # see note below
 docker compose -f docker-compose.yml up -d --build
 ```
+
+> **Create `data/` yourself before the first start.** The container runs as the
+> non-root `node` user (uid 1000). If Docker has to create the bind-mount
+> source directory, it creates it owned by root and the app can't write to it.
+> Making it first means it's owned by you, and uid 1000 matches on most Linux
+> hosts.
 
 Either way, open `http://<host>:8420` from any device on your network
 (phone, laptop, tablet, whatever).
@@ -119,8 +127,15 @@ simplest path:
   If it ever needs multi-user support or heavier querying, swap `server.js`'s
   file read/write for SQLite: the API surface (`GET/POST/DELETE
   /api/entries`) wouldn't need to change.
-- `GET /api/health` returns `{status:"ok"}` if you want to wire up a
-  docker-compose healthcheck or Watchtower monitoring.
+- `GET /api/health` returns `{status:"ok"}`. Both compose files wire this up as
+  a container healthcheck already; it's also there for Watchtower monitoring.
+- Chart.js and the webfonts are vendored under `public/vendor/` rather than
+  pulled from a CDN, so the app works fully offline and makes no third-party
+  requests — it holds health data.
+- If `data/entries.json` is ever corrupt (partial write, full disk), the server
+  refuses to read *or* overwrite it and returns a 500 explaining why, rather
+  than silently starting from an empty list and destroying your history. Repair
+  or move the file, then restart.
 
 ## License
 
