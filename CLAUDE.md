@@ -98,14 +98,26 @@ on push is expected rather than a mistake.
 ## Verifying UI changes
 
 There are no frontend tests, so changes to `public/index.html` need the app
-driven for real.
+driven for real. **Stand up a local preview and get it confirmed on a real
+device before pushing.** Pushing builds an image and moving the container onto
+a bad one costs a full round trip, and the engine that matters here is iOS
+Safari, which headless Chromium does not stand in for.
 
-Start by seeding a throwaway instance with realistic data rather than testing
-against an empty list, since most of the charts render nothing without entries:
+Seed a throwaway instance from the running container's data, so the charts have
+something to draw:
 
 ```bash
-DATA_DIR=/tmp/wheezer-test PORT=8421 node server.js
+mkdir -p /tmp/wheezer-preview
+curl -s http://localhost:8420/api/entries > /tmp/wheezer-preview/entries.json
+DATA_DIR=/tmp/wheezer-preview PORT=8421 node server.js
 ```
+
+Then hand over `http://<lan-ip>:8421` and wait for confirmation. Find the
+address with `ip -4 -o addr show scope global` and take the real interface, not
+the many `br-*` docker bridges; it's the same host the container serves from,
+so a phone on the VPN reaches it the same way. Entries saved into the preview
+land in the temp copy and are thrown away. `public/` is served from disk per
+request, so edits appear on reload without restarting the process.
 
 Then exercise it over HTTP, which needs nothing installed:
 
