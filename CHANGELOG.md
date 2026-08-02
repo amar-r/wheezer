@@ -25,6 +25,24 @@ Versions follow semver. The git tag is what makes a release; see
 - Stored entries are capped (`MAX_ENTRIES`, default 50000) and request bodies
   are limited to 32kb, down from Express's 100kb default. Normal use won't come
   near either; they're here so a stuck client can't fill the disk.
+- The New Entry form is split into labeled sections (Symptoms, Inhaler use,
+  Environment, Diet, Notes) instead of one undivided list of 25+ fields, and
+  the four meal fields are paired into two columns instead of stacking
+  full-width.
+
+### Added
+
+- History & Trends gained four charts: rescue inhaler puffs per day, a
+  calendar heatmap of daily max severity, severity plotted against AQI and
+  against pollen index, and average severity by setting. The existing
+  multi-symptom trend line stays as the detail view underneath them.
+
+### Fixed
+
+- Date and Time inputs could render at slightly different heights depending
+  on the browser engine — native date/time picker controls don't always get
+  the same intrinsic height as a plain text input even with identical CSS.
+  Both now have an explicit height so a Date/Time row always lines up.
 
 ## 1.1.0
 
