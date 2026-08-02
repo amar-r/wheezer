@@ -3,7 +3,11 @@
 Versions follow semver. The git tag is what makes a release; see
 [README](README.md#versioning-and-releases).
 
-## Unreleased
+## 1.2.1
+
+A layout pass over the New Entry form, plus the iOS date field fix. Nothing
+about what gets recorded changed, so entries written before and after this
+release are identical in shape.
 
 ### Changed
 
@@ -28,7 +32,6 @@ Versions follow semver. The git tag is what makes a release; see
   next to Pollen index and on the zip field next to its fetch button. Rows now
   align on the bottom edge, and the pollen label drops the redundant spelled
   out "Universal Pollen Index" that caused the worst of it.
-
 - The Date & time field centered its value on iOS Safari while every other
   input in the form left-aligns, leaving the entry card looking crooked.
   Safari gives date inputs an intrinsic content width and centers the value
