@@ -9,8 +9,9 @@ const PORT = process.env.PORT || 8420;
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'entries.json');
 
-// Cache zip -> lat/lon lookups in memory so we don't re-geocode every poll
-const geocodeCache = new Map();
+// Cache place id -> coordinates in memory. Resolving a place is a billable
+// Places call, and one household reuses the same few addresses forever.
+const placeCache = new Map();
 
 // Refuse to keep growing the entry file without bound. Normal use is a handful
 // of entries a day, so this is unreachable by hand — it's here so a stuck
@@ -65,14 +66,74 @@ function writeEntries(entries) {
   fs.renameSync(tmp, DATA_FILE);
 }
 
-// Current AQI for a zip code via Google's Air Quality API. Requests the
-// USA EPA local index (not just Google's own Universal AQI) so numbers use
-// the familiar 0-500 EPA scale.
-async function fetchAirQuality(zip) {
+function requireApiKey() {
   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
   if (!apiKey) throw new Error('GOOGLE_MAPS_API_KEY is not configured on the server');
+  return apiKey;
+}
 
-  const { lat, lon, placeName, state } = await geocodeZip(zip);
+// Address suggestions from the Places API (New). The session token groups the
+// keystrokes of one search together with the details call that ends it, so
+// Google bills the search as a single session instead of per request.
+async function fetchPlaceSuggestions(input, sessionToken) {
+  const apiKey = requireApiKey();
+
+  const r = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': apiKey },
+    body: JSON.stringify({ input, sessionToken })
+  });
+  if (!r.ok) throw await upstreamError('Google Places API', r);
+  const data = await r.json();
+
+  // Suggestions can also be query predictions, which have no place id and so
+  // can't be resolved to a point — keep only the ones we can actually use.
+  return (data.suggestions || [])
+    .filter(s => s.placePrediction && s.placePrediction.placeId)
+    .map(({ placePrediction: p }) => {
+      const fmt = p.structuredFormat || {};
+      return {
+        placeId: p.placeId,
+        mainText: (fmt.mainText && fmt.mainText.text) || (p.text && p.text.text) || '',
+        secondaryText: (fmt.secondaryText && fmt.secondaryText.text) || ''
+      };
+    });
+}
+
+// Turn a place id from the suggestion list into coordinates. The field mask is
+// required by the Places API and also picks the billing tier, so keep it to
+// these three fields — location and formattedAddress are all the page needs.
+async function fetchPlaceDetails(placeId, sessionToken) {
+  if (placeCache.has(placeId)) return placeCache.get(placeId);
+  const apiKey = requireApiKey();
+
+  const url = `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}` +
+    (sessionToken ? `?sessionToken=${encodeURIComponent(sessionToken)}` : '');
+  const r = await fetch(url, {
+    headers: {
+      'X-Goog-Api-Key': apiKey,
+      'X-Goog-FieldMask': 'location,formattedAddress,shortFormattedAddress'
+    }
+  });
+  if (!r.ok) throw await upstreamError('Google Places API', r);
+  const data = await r.json();
+  if (!data.location) throw new Error('That place has no coordinates to look up conditions for');
+
+  const place = {
+    placeId,
+    lat: data.location.latitude,
+    lon: data.location.longitude,
+    address: data.shortFormattedAddress || data.formattedAddress || ''
+  };
+  placeCache.set(placeId, place);
+  return place;
+}
+
+// Current AQI for a point via Google's Air Quality API. Requests the
+// USA EPA local index (not just Google's own Universal AQI) so numbers use
+// the familiar 0-500 EPA scale.
+async function fetchAirQuality(lat, lon) {
+  const apiKey = requireApiKey();
 
   const r = await fetch(`https://airquality.googleapis.com/v1/currentConditions:lookup?key=${apiKey}`, {
     method: 'POST',
@@ -93,38 +154,13 @@ async function fetchAirQuality(zip) {
     aqi: epa.aqi,
     category: epa.category,
     pollutant: epa.dominantPollutant,
-    reportingArea: placeName,
-    state,
     observedAt: data.dateTime
   };
 }
 
-// Look up lat/lon for a US zip code, no API key needed
-async function geocodeZip(zip) {
-  if (geocodeCache.has(zip)) return geocodeCache.get(zip);
-
-  const r = await fetch(`https://api.zippopotam.us/us/${encodeURIComponent(zip)}`);
-  if (!r.ok) throw new Error(`Could not look up location for zip ${zip}`);
-  const data = await r.json();
-  const place = data.places && data.places[0];
-  if (!place) throw new Error(`No location found for zip ${zip}`);
-
-  const coords = {
-    lat: Number(place.latitude),
-    lon: Number(place.longitude),
-    placeName: place['place name'],
-    state: place['state abbreviation']
-  };
-  geocodeCache.set(zip, coords);
-  return coords;
-}
-
-// Current weather for a zip code via Google's Weather API
-async function fetchWeather(zip) {
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-  if (!apiKey) throw new Error('GOOGLE_MAPS_API_KEY is not configured on the server');
-
-  const { lat, lon, placeName, state } = await geocodeZip(zip);
+// Current weather for a point via Google's Weather API
+async function fetchWeather(lat, lon) {
+  const apiKey = requireApiKey();
 
   const url = `https://weather.googleapis.com/v1/currentConditions:lookup?key=${apiKey}` +
     `&location.latitude=${lat}&location.longitude=${lon}&unitsSystem=IMPERIAL`;
@@ -141,19 +177,14 @@ async function fetchWeather(zip) {
     precipitation: data.precipitation && data.precipitation.qpf ? data.precipitation.qpf.quantity : 0,
     condition: (data.weatherCondition && data.weatherCondition.description && data.weatherCondition.description.text) || 'Unknown',
     conditionCode: data.weatherCondition ? data.weatherCondition.type : null,
-    observedAt: data.currentTime,
-    placeName,
-    state
+    observedAt: data.currentTime
   };
 }
 
-// Current pollen levels for a zip code via Google's Pollen API, which has
+// Current pollen levels for a point via Google's Pollen API, which has
 // real US coverage across grass, tree, and weed.
-async function fetchPollen(zip) {
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-  if (!apiKey) throw new Error('GOOGLE_MAPS_API_KEY is not configured on the server');
-
-  const { lat, lon, placeName, state } = await geocodeZip(zip);
+async function fetchPollen(lat, lon) {
+  const apiKey = requireApiKey();
 
   const url = `https://pollen.googleapis.com/v1/forecast:lookup?key=${apiKey}` +
     `&location.latitude=${lat}&location.longitude=${lon}&days=1`;
@@ -191,9 +222,7 @@ async function fetchPollen(zip) {
     weed: byType.WEED || null,
     dominantType: dominantType.toLowerCase(),
     dominantValue: byType[dominantType].value,
-    dominantCategory: byType[dominantType].category,
-    placeName,
-    state
+    dominantCategory: byType[dominantType].category
   };
 }
 
@@ -303,72 +332,117 @@ app.get('/api/health', (req, res) => res.json({ status: 'ok', version }));
 // Google Cloud console — this is only the local backstop.
 const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 const RATE_LIMIT_MAX = Number(process.env.LOOKUP_RATE_LIMIT || 30);
-const rateBuckets = new Map();
+const rateLimiters = [];
 
-function rateLimitLookups(req, res, next) {
-  const now = Date.now();
-  let bucket = rateBuckets.get(req.ip);
-  if (!bucket || now >= bucket.resetAt) {
-    bucket = { count: 0, resetAt: now + RATE_LIMIT_WINDOW_MS };
-    rateBuckets.set(req.ip, bucket);
-  }
-  bucket.count++;
-  if (bucket.count > RATE_LIMIT_MAX) {
-    const retryAfter = Math.ceil((bucket.resetAt - now) / 1000);
-    res.setHeader('Retry-After', String(retryAfter));
-    return res.status(429).json({ error: `Too many lookups — try again in ${retryAfter}s.` });
-  }
-  next();
+function makeRateLimiter(max) {
+  const buckets = new Map();
+  rateLimiters.push(buckets);
+  return function (req, res, next) {
+    const now = Date.now();
+    let bucket = buckets.get(req.ip);
+    if (!bucket || now >= bucket.resetAt) {
+      bucket = { count: 0, resetAt: now + RATE_LIMIT_WINDOW_MS };
+      buckets.set(req.ip, bucket);
+    }
+    bucket.count++;
+    if (bucket.count > max) {
+      const retryAfter = Math.ceil((bucket.resetAt - now) / 1000);
+      res.setHeader('Retry-After', String(retryAfter));
+      return res.status(429).json({ error: `Too many lookups — try again in ${retryAfter}s.` });
+    }
+    next();
+  };
 }
 
-// Buckets are keyed by IP, so left alone this map grows for the life of the
-// process — the same unbounded-growth problem it exists to prevent. unref() so
+const rateLimitLookups = makeRateLimiter(RATE_LIMIT_MAX);
+
+// Address suggestions get their own, much looser bucket. One search is a
+// handful of debounced keystrokes, so sharing the bucket above would let
+// typing two addresses use up the window's conditions fetches.
+const rateLimitSuggest = makeRateLimiter(RATE_LIMIT_MAX * 8);
+
+// Buckets are keyed by IP, so left alone these maps grow for the life of the
+// process — the same unbounded-growth problem they exist to prevent. unref() so
 // a pending sweep never holds the process open on shutdown.
 setInterval(() => {
   const now = Date.now();
-  for (const [ip, bucket] of rateBuckets) {
-    if (now >= bucket.resetAt) rateBuckets.delete(ip);
+  for (const buckets of rateLimiters) {
+    for (const [ip, bucket] of buckets) {
+      if (now >= bucket.resetAt) buckets.delete(ip);
+    }
   }
 }, RATE_LIMIT_WINDOW_MS).unref();
 
-// Look up current AQI by zip code (server-side, keeps API key private)
+// Address suggestions for the search box (server-side, keeps API key private).
+// Typing runs this on nearly every keystroke, hence the separate budget.
+app.get('/api/places/autocomplete', rateLimitSuggest, async (req, res) => {
+  const q = (req.query.q || '').trim();
+  const session = (req.query.session || '').trim();
+  // Too short to be worth a billable call — one or two characters match half
+  // the country and the list is useless anyway.
+  if (q.length < 3) return res.json([]);
+  try {
+    res.json(await fetchPlaceSuggestions(q, session));
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+});
+
+// Resolve one suggestion into the coordinates the lookups below run against
+app.get('/api/places/details', rateLimitLookups, async (req, res) => {
+  const placeId = (req.query.placeId || '').trim();
+  const session = (req.query.session || '').trim();
+  if (!placeId) {
+    return res.status(400).json({ error: 'Provide a placeId from /api/places/autocomplete' });
+  }
+  try {
+    res.json(await fetchPlaceDetails(placeId, session));
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+});
+
+// The page resolves an address to a point before calling the three lookups
+// below, so bad coordinates here mean a hand-made request rather than a typo.
+// Reject them instead of guessing at what was meant.
+function parseCoords(req) {
+  const lat = Number(req.query.lat);
+  const lon = Number(req.query.lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
+  return { lat, lon };
+}
+
+const BAD_COORDS = { error: 'Provide coordinates, e.g. ?lat=40.7484&lon=-73.9857' };
+
+// Look up current AQI by coordinates (server-side, keeps API key private)
 app.get('/api/aqi', rateLimitLookups, async (req, res) => {
-  const zip = (req.query.zip || '').trim();
-
-  if (!zip || !/^\d{5}$/.test(zip)) {
-    return res.status(400).json({ error: 'Provide a 5-digit zip code, e.g. ?zip=10001' });
-  }
+  const at = parseCoords(req);
+  if (!at) return res.status(400).json(BAD_COORDS);
   try {
-    const result = await fetchAirQuality(zip);
-    res.json(result);
+    res.json(await fetchAirQuality(at.lat, at.lon));
   } catch (e) {
     res.status(502).json({ error: e.message });
   }
 });
 
-// Look up current weather by zip code (server-side, keeps API key private)
+// Look up current weather by coordinates (server-side, keeps API key private)
 app.get('/api/weather', rateLimitLookups, async (req, res) => {
-  const zip = (req.query.zip || '').trim();
-  if (!zip || !/^\d{5}$/.test(zip)) {
-    return res.status(400).json({ error: 'Provide a 5-digit zip code, e.g. ?zip=10001' });
-  }
+  const at = parseCoords(req);
+  if (!at) return res.status(400).json(BAD_COORDS);
   try {
-    const result = await fetchWeather(zip);
-    res.json(result);
+    res.json(await fetchWeather(at.lat, at.lon));
   } catch (e) {
     res.status(502).json({ error: e.message });
   }
 });
 
-// Look up current pollen levels by zip code (server-side, keeps API key private)
+// Look up current pollen levels by coordinates (server-side, keeps API key private)
 app.get('/api/pollen', rateLimitLookups, async (req, res) => {
-  const zip = (req.query.zip || '').trim();
-  if (!zip || !/^\d{5}$/.test(zip)) {
-    return res.status(400).json({ error: 'Provide a 5-digit zip code, e.g. ?zip=10001' });
-  }
+  const at = parseCoords(req);
+  if (!at) return res.status(400).json(BAD_COORDS);
   try {
-    const result = await fetchPollen(zip);
-    res.json(result);
+    res.json(await fetchPollen(at.lat, at.lon));
   } catch (e) {
     res.status(502).json({ error: e.message });
   }

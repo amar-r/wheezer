@@ -13,12 +13,14 @@ Docker image: [`mrrthr/wheezer`](https://hub.docker.com/r/mrrthr/wheezer)
 
 ## AQI, weather & pollen lookup (Google Maps Platform)
 
-The "Fetch AQI, Weather & Pollen" button looks up current air quality,
-weather, and pollen by zip code. All three come from Google Maps Platform,
-under one API key.
+Type an address into the **Address** box, pick one of the suggestions, then
+press **Fetch conditions** to look up current air quality, weather, and
+pollen for that point. All of it comes from Google Maps Platform, under one
+API key.
 
 1. Create/select a project at https://console.cloud.google.com/ and enable
-   the **Air Quality API**, **Weather API**, and **Pollen API**
+   the **Places API (New)**, **Air Quality API**, **Weather API**, and
+   **Pollen API**
    (https://console.cloud.google.com/google/maps-apis/api-list), then create
    an API key. This requires a Cloud billing account attached to the
    project. You're on pay-as-you-go, so charges apply once you exceed the
@@ -27,6 +29,8 @@ under one API key.
    - **Air Quality Usage**: 10,000 free/month, then $5.00 per 1,000
    - **Weather Usage**: 10,000 free/month, then $0.15 per 1,000
    - **Pollen Usage**: 5,000 free/month, then $10.00 per 1,000
+   - **Places**: billed per autocomplete *session*, not per keystroke —
+     check the pricing page above for the current rate and free volume.
 
    Every lookup happens on demand when you press the fetch button, so usage
    is tied directly to how often you log entries. Normal personal use
@@ -43,8 +47,14 @@ still enter everything manually.
 
 AQI is requested via Google's `usa_epa` local index (not just their own
 Universal AQI), so values use the familiar 0–500 EPA scale.
-Zip-to-coordinates lookup uses zippopotam.us, free and keyless, unrelated
-to the Google key.
+
+Address search sends each keystroke (debounced, and only from the third
+character on) to Places Autocomplete, then resolves the address you pick
+into coordinates once. Every request in one search carries the same session
+token, which is what makes Google bill the search as a single session rather
+than per keystroke. The chosen address and its coordinates are remembered in
+the browser so a later visit can fetch without searching again; they are not
+stored on entries.
 
 The pollen fetch fills in "Pollen level" (category + dominant plant type,
 e.g. "High (tree)") and "Pollen index" (Google's 0–5 Universal Pollen

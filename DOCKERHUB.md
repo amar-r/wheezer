@@ -1,8 +1,8 @@
 # Wheezer
 
 Self-hosted breathing/symptom tracker: log wheeze, cough, inhaler use, and
-possible triggers, with automatic AQI, weather, and pollen lookups by zip
-code (Google Maps Platform).
+possible triggers, with automatic AQI, weather, and pollen lookups by
+address search (Google Maps Platform).
 
 Source: https://github.com/amar-r/wheezer
 
@@ -28,11 +28,11 @@ Images are built for `linux/amd64` and `linux/arm64`.
 
 ## Environment variables
 
-- `GOOGLE_MAPS_API_KEY`: optional. Enables the "Fetch AQI, Weather &
-  Pollen" button (Google Air Quality, Weather, and Pollen APIs, all under
-  one key). Without it, symptom logging still works fine, you just fill in
-  environment fields by hand. See the GitHub README for setup and pricing
-  details.
+- `GOOGLE_MAPS_API_KEY`: optional. Enables address search and the "Fetch
+  conditions" button (Google Places, Air Quality, Weather, and Pollen APIs,
+  all under one key). Without it, symptom logging still works fine, you just
+  fill in environment fields by hand. See the GitHub README for setup and
+  pricing details.
 - `PORT`: default `8420`.
 - `DATA_DIR`: default `/app/data`. Mount a volume here for persistence
   (the `compose.yaml` above already does this via `./data:/app/data`).

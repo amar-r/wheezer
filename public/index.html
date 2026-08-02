@@ -178,6 +178,27 @@ textarea{min-height:56px;resize:vertical;}
    inputs level however the labels above them wrap. */
 .row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;}
 .row > .field{flex:1;min-width:140px;}
+/* An address needs far more room than the zip code this replaced, so give it a
+   wide enough minimum that it takes a line of its own on a phone rather than
+   sharing one with the fetch button. */
+.row > .field.address{min-width:230px;}
+.field.address{position:relative;}
+/* Anchored to the field and floating over what follows, so the form doesn't
+   jump around as suggestions appear and disappear under the cursor. */
+.suggestions{
+  position:absolute;top:100%;left:0;right:0;z-index:20;
+  margin-top:4px;background:var(--white);
+  border:1px solid var(--line);border-radius:4px;overflow:hidden;
+  box-shadow:0 6px 20px rgba(0,0,0,0.18);
+}
+.s-item{
+  padding:10px;cursor:pointer;font-size:0.9rem;
+  border-bottom:1px solid var(--line);
+}
+.s-item:last-child{border-bottom:none;}
+.s-item.active{background:var(--paper-2);}
+.s-main{display:block;color:var(--ink);}
+.s-sub{display:block;color:var(--ink-soft);font-size:0.8rem;margin-top:2px;}
 .severity{display:flex;gap:6px;}
 .sev-btn{
   flex:1;padding:9px 4px;text-align:center;border:1px solid var(--line);
@@ -309,6 +330,11 @@ canvas,svg,img{max-width:100%;}
      what overflows the row on a narrow screen. */
   .row{gap:10px;}
   .row > .field{min-width:0;}
+  /* The address keeps its floor here, so it is the one field that still can't
+     shrink — which left the fetch button beside it squeezed narrow enough to
+     wrap "Fetch conditions" onto two lines, towering over the input. Give the
+     address the whole line and let the button wrap below it at full width. */
+  .row > .field.address{min-width:100%;}
   .stats-row{gap:8px;}
   .stat{min-width:0;flex:1 1 calc(50% - 4px);padding:12px 14px;}
   .stat .n{font-size:1.3rem;}
@@ -414,7 +440,7 @@ canvas,svg,img{max-width:100%;}
         <label>Inhaler puffs</label>
         <div class="count-input">
           <button type="button" id="puffs-minus">–</button>
-          <span id="puffs-count">2</span>
+          <span id="puffs-count">0</span>
           <button type="button" id="puffs-plus">+</button>
         </div>
       </div>
@@ -422,9 +448,11 @@ canvas,svg,img{max-width:100%;}
       <div class="section-label">Environment</div>
 
       <div class="row">
-        <div class="field">
-          <label>Zip code</label>
-          <input type="text" id="f-zip" placeholder="e.g. 10001" maxlength="5" inputmode="numeric">
+        <div class="field address">
+          <label>Address</label>
+          <input type="text" id="f-address" placeholder="Start typing an address"
+                 autocomplete="off" autocapitalize="off" spellcheck="false">
+          <div class="suggestions" id="addr-suggestions" hidden></div>
         </div>
         <div class="field" style="display:flex;align-items:flex-end;">
           <button type="button" class="btn-primary" id="aqi-fetch-btn" style="width:100%;">Fetch conditions</button>
@@ -600,7 +628,7 @@ let selectedChest = null;
 let selectedShortness = null;
 // Defaults to 2 rather than 0: on the days this actually gets logged, 2
 // puffs is the typical dose, so the common case needs no taps.
-let puffsCount = 2;
+let puffsCount = 0;
 let trendChartInstance = null;
 let puffsChartInstance = null;
 let settingChartInstance = null;
@@ -716,39 +744,175 @@ async function loadEntries(){
 
 document.getElementById('f-datetime').value = localDatetimeValue(new Date());
 
-// Remember last-used zip code locally for convenience
-const savedZip = localStorage.getItem('breathlog-zip');
-if (savedZip) document.getElementById('f-zip').value = savedZip;
+// Remember the last-used address locally so a returning visit can fetch
+// conditions straight away without searching again. Stored with its resolved
+// coordinates, because the address text alone can't be looked up.
+const PLACE_KEY = 'wheezer-place';
+const addrEl = document.getElementById('f-address');
+const sugEl = document.getElementById('addr-suggestions');
+let selectedPlace = null;
 
-document.getElementById('aqi-fetch-btn').addEventListener('click', async () => {
-  const zipEl = document.getElementById('f-zip');
+try {
+  const saved = JSON.parse(localStorage.getItem(PLACE_KEY) || 'null');
+  if (saved && Number.isFinite(saved.lat) && Number.isFinite(saved.lon)) {
+    selectedPlace = saved;
+    addrEl.value = saved.address || '';
+  }
+} catch (e) {
+  // A malformed saved place just means starting the search box empty.
+}
+
+// crypto.randomUUID() exists only in a secure context, and this app is normally
+// served over plain HTTP on a LAN address — so on the phone that matters most
+// it is undefined. getRandomValues carries no such restriction; build the v4 by
+// hand from it.
+function newSessionToken(){
+  if (crypto.randomUUID) return crypto.randomUUID();
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  const h = [...b].map(x => x.toString(16).padStart(2, '0'));
+  return h.slice(0,4).join('') + '-' + h.slice(4,6).join('') + '-' +
+         h.slice(6,8).join('') + '-' + h.slice(8,10).join('') + '-' + h.slice(10,16).join('');
+}
+
+// Google bills a whole address search as one session when every request in it
+// carries the same token, so this is held across keystrokes and rotated only
+// once a pick has closed the session.
+let placeSession = newSessionToken();
+let suggestions = [];
+let activeIndex = -1;
+let searchTimer = null;
+let searchSeq = 0;
+
+function closeSuggestions(){
+  suggestions = [];
+  activeIndex = -1;
+  sugEl.hidden = true;
+  sugEl.innerHTML = '';
+}
+
+function renderSuggestions(){
+  if (!suggestions.length) { closeSuggestions(); return; }
+  sugEl.innerHTML = suggestions.map((s, i) =>
+    '<div class="s-item' + (i === activeIndex ? ' active' : '') + '" data-i="' + i + '">' +
+      '<span class="s-main">' + escapeHtml(s.mainText) + '</span>' +
+      (s.secondaryText ? '<span class="s-sub">' + escapeHtml(s.secondaryText) + '</span>' : '') +
+    '</div>'
+  ).join('');
+  sugEl.hidden = false;
+}
+
+async function selectSuggestion(i){
+  const s = suggestions[i];
+  if (!s) return;
   const errEl = document.getElementById('aqi-err');
-  const btn = document.getElementById('aqi-fetch-btn');
-  const zip = zipEl.value.trim();
+  closeSuggestions();
+  addrEl.value = [s.mainText, s.secondaryText].filter(Boolean).join(', ');
   errEl.style.display = 'none';
 
-  if (!/^\d{5}$/.test(zip)) {
-    errEl.textContent = 'Enter a 5-digit zip code.';
+  try {
+    const r = await fetch('/api/places/details?placeId=' + encodeURIComponent(s.placeId) +
+      '&session=' + encodeURIComponent(placeSession));
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Could not resolve that address');
+    selectedPlace = { address: d.address || addrEl.value, lat: d.lat, lon: d.lon };
+    addrEl.value = selectedPlace.address;
+    localStorage.setItem(PLACE_KEY, JSON.stringify(selectedPlace));
+  } catch (e) {
+    selectedPlace = null;
+    errEl.textContent = e.message;
+    errEl.style.display = 'block';
+  }
+  // Resolving the pick ends the billing session either way.
+  placeSession = newSessionToken();
+}
+
+addrEl.addEventListener('input', () => {
+  // Editing the text invalidates whatever the old text resolved to. Without
+  // this, tweaking the address and hitting fetch would quietly report
+  // conditions for the previously picked point.
+  selectedPlace = null;
+  const q = addrEl.value.trim();
+  clearTimeout(searchTimer);
+  if (q.length < 3) { closeSuggestions(); return; }
+
+  searchTimer = setTimeout(async () => {
+    const seq = ++searchSeq;
+    try {
+      const r = await fetch('/api/places/autocomplete?q=' + encodeURIComponent(q) +
+        '&session=' + encodeURIComponent(placeSession));
+      const d = await r.json();
+      // Responses can land out of order; only the newest query's results count.
+      if (seq !== searchSeq) return;
+      if (!r.ok) throw new Error(d.error || 'Address lookup failed');
+      suggestions = Array.isArray(d) ? d : [];
+      activeIndex = -1;
+      renderSuggestions();
+    } catch (e) {
+      if (seq === searchSeq) closeSuggestions();
+    }
+  }, 300);
+});
+
+addrEl.addEventListener('keydown', (ev) => {
+  if (sugEl.hidden || !suggestions.length) return;
+  if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+    ev.preventDefault();
+    const step = ev.key === 'ArrowDown' ? 1 : -1;
+    if (activeIndex === -1) activeIndex = step === 1 ? 0 : suggestions.length - 1;
+    else activeIndex = (activeIndex + step + suggestions.length) % suggestions.length;
+    renderSuggestions();
+  } else if (ev.key === 'Enter') {
+    ev.preventDefault();
+    selectSuggestion(activeIndex === -1 ? 0 : activeIndex);
+  } else if (ev.key === 'Escape') {
+    closeSuggestions();
+  }
+});
+
+// pointerdown rather than click, and preventDefault, so the tap resolves before
+// the input's blur can tear the list down underneath it.
+sugEl.addEventListener('pointerdown', (ev) => {
+  const item = ev.target.closest('.s-item');
+  if (!item) return;
+  ev.preventDefault();
+  selectSuggestion(Number(item.dataset.i));
+});
+
+addrEl.addEventListener('blur', () => setTimeout(closeSuggestions, 150));
+
+document.getElementById('aqi-fetch-btn').addEventListener('click', async () => {
+  const errEl = document.getElementById('aqi-err');
+  const btn = document.getElementById('aqi-fetch-btn');
+  errEl.style.display = 'none';
+  closeSuggestions();
+
+  if (!selectedPlace) {
+    errEl.textContent = addrEl.value.trim()
+      ? 'Pick an address from the suggestions.'
+      : 'Search for an address first.';
     errEl.style.display = 'block';
     return;
   }
 
-  localStorage.setItem('breathlog-zip', zip);
+  const at = 'lat=' + encodeURIComponent(selectedPlace.lat) +
+             '&lon=' + encodeURIComponent(selectedPlace.lon);
   btn.disabled = true;
   btn.textContent = 'Fetching…';
 
   const [aqiResult, weatherResult, pollenResult] = await Promise.allSettled([
-    fetch('/api/aqi?zip=' + encodeURIComponent(zip)).then(async r => {
+    fetch('/api/aqi?' + at).then(async r => {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'AQI lookup failed');
       return d;
     }),
-    fetch('/api/weather?zip=' + encodeURIComponent(zip)).then(async r => {
+    fetch('/api/weather?' + at).then(async r => {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'Weather lookup failed');
       return d;
     }),
-    fetch('/api/pollen?zip=' + encodeURIComponent(zip)).then(async r => {
+    fetch('/api/pollen?' + at).then(async r => {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'Pollen lookup failed');
       return d;
@@ -793,9 +957,9 @@ document.getElementById('aqi-fetch-btn').addEventListener('click', async () => {
 
   if (summaryParts.length) {
     btn.textContent = summaryParts.join(' — ');
-    setTimeout(() => { btn.textContent = 'Fetch AQI, Weather & Pollen'; }, 4000);
+    setTimeout(() => { btn.textContent = 'Fetch conditions'; }, 4000);
   } else {
-    btn.textContent = 'Fetch AQI, Weather & Pollen';
+    btn.textContent = 'Fetch conditions';
   }
 
   if (errors.length) {
@@ -874,8 +1038,8 @@ function resetEntryForm(){
   document.getElementById('f-dinner').value='';
   document.getElementById('f-snacks').value='';
   document.getElementById('f-notes').value='';
-  puffsCount = 2;
-  document.getElementById('puffs-count').textContent = 2;
+  puffsCount = 0;
+  document.getElementById('puffs-count').textContent = 0;
   selectedWheeze = null; selectedCough = null; selectedChest = null; selectedShortness = null;
   document.querySelectorAll('.sev-btn').forEach(x=>x.classList.remove('selected'));
   document.getElementById('f-datetime').value = localDatetimeValue(new Date());

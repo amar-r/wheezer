@@ -3,6 +3,45 @@
 Versions follow semver. The git tag is what makes a release; see
 [README](README.md#versioning-and-releases).
 
+## Unreleased
+
+### Changed
+
+- The environment lookup takes an address instead of a zip code. Typing into
+  the new **Address** box brings up Google Places suggestions; picking one
+  resolves it to a point that AQI, weather, and pollen are then fetched for.
+  A zip code covers a lot of ground — a five-digit centroid can sit miles from
+  where you actually are, which is the wrong resolution for pollen especially.
+  A zip still works as a search term, so the old habit isn't lost.
+
+  This needs the **Places API (New)** enabled on the same key as the other
+  three. Without a key the search box behaves like every other field: nothing
+  is looked up, and you type the values in yourself.
+
+  Every request in one search carries a shared session token, so Google bills
+  the search as a single session rather than per keystroke. Suggestions are
+  debounced, start only at the third character, and get their own rate-limit
+  budget so that typing an address can't eat the window's conditions fetches.
+
+- The three lookup endpoints take `?lat=&lon=` instead of `?zip=`, and no
+  longer echo back a place name, since that now comes from the address search
+  rather than from a reverse lookup on the zip. `zippopotam.us` went with it —
+  the app no longer calls anything outside Google.
+
+- The chosen address and its coordinates are remembered in the browser, the way
+  the zip code was, so a later visit can fetch without searching again. Neither
+  is written onto entries; the stored fields are unchanged.
+
+- Inhaler puffs starts at 0 rather than 2. Plenty of entries record symptoms
+  without an inhaler, and a non-zero default meant those silently logged two
+  puffs that never happened unless you noticed and clicked it back down.
+
+### Fixed
+
+- After a successful fetch the button relabelled itself "Fetch AQI, Weather &
+  Pollen" — the name it had before 1.2.1 renamed it — so the button silently
+  grew back to two lines once you'd used it.
+
 ## 1.2.1
 
 A layout pass over the New Entry form, plus the iOS date field fix. Nothing
