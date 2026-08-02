@@ -150,7 +150,7 @@ label{
   text-transform:uppercase;letter-spacing:0.04em;
   color:var(--ink-soft);margin-bottom:6px;
 }
-input[type=text],input[type=date],input[type=time],input[type=number],textarea,select{
+input[type=text],input[type=datetime-local],input[type=number],textarea,select{
   width:100%;padding:9px 10px;border:1px solid var(--line);
   border-radius:4px;font-family:'Inter';font-size:0.92rem;
   background:var(--paper);color:var(--ink);
@@ -159,7 +159,7 @@ input[type=text],input[type=date],input[type=time],input[type=number],textarea,s
    different intrinsic height than plain text inputs on some engines
    (notably Safari) even with identical padding — pin an explicit height
    so any row of side-by-side inputs always lines up. */
-input[type=text],input[type=date],input[type=time],input[type=number],select{
+input[type=text],input[type=datetime-local],input[type=number],select{
   height:42px;
 }
 textarea{min-height:56px;resize:vertical;}
@@ -269,7 +269,7 @@ canvas,svg,img{max-width:100%;}
   /* iOS Safari zooms the page in whenever you focus an input whose font-size
      is under 16px, and never fully zooms back out — that zoom is what makes
      the layout appear to shift around. 16px is the threshold that stops it. */
-  input[type=text],input[type=date],input[type=time],input[type=number],textarea,select{
+  input[type=text],input[type=datetime-local],input[type=number],textarea,select{
     font-size:16px;
   }
 
@@ -333,12 +333,8 @@ canvas,svg,img{max-width:100%;}
   <div id="tab-entry">
     <div class="card">
       <div class="field">
-        <label>Date</label>
-        <input type="date" id="f-date">
-      </div>
-      <div class="field">
-        <label>Time</label>
-        <input type="time" id="f-time">
+        <label>Date &amp; time</label>
+        <input type="datetime-local" id="f-datetime">
       </div>
 
       <div class="section-label">Symptoms</div>
@@ -617,6 +613,13 @@ let settingChartInstance = null;
 const scatterInstances = {};
 let editingEntryId = null;
 
+// Formats a Date as the local "YYYY-MM-DDTHH:mm" value a datetime-local
+// input expects — toISOString() would convert to UTC and shift the day/time.
+function localDatetimeValue(d){
+  const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 const THEME_KEY = 'wheezer-theme';
 
 // Symptom severity is a 4-point None/Mild/Moderate/Severe scale (stored as
@@ -717,9 +720,7 @@ async function loadEntries(){
   renderHistory();
 }
 
-const now = new Date();
-document.getElementById('f-date').value = now.toISOString().slice(0,10);
-document.getElementById('f-time').value = now.toTimeString().slice(0,5);
+document.getElementById('f-datetime').value = localDatetimeValue(new Date());
 
 // Remember last-used zip code locally for convenience
 const savedZip = localStorage.getItem('breathlog-zip');
@@ -883,9 +884,7 @@ function resetEntryForm(){
   document.getElementById('puffs-count').textContent = 2;
   selectedWheeze = null; selectedCough = null; selectedChest = null; selectedShortness = null;
   document.querySelectorAll('.sev-btn').forEach(x=>x.classList.remove('selected'));
-  const now2 = new Date();
-  document.getElementById('f-date').value = now2.toISOString().slice(0,10);
-  document.getElementById('f-time').value = now2.toTimeString().slice(0,5);
+  document.getElementById('f-datetime').value = localDatetimeValue(new Date());
 }
 
 function exitEditMode(){
@@ -903,9 +902,11 @@ document.getElementById('save-btn').addEventListener('click', async ()=>{
   const errEl = document.getElementById('save-err');
   errEl.style.display = 'none';
 
+  const [entryDate, entryTime] = document.getElementById('f-datetime').value.split('T');
+
   const entry = {
-    date: document.getElementById('f-date').value,
-    time: document.getElementById('f-time').value,
+    date: entryDate || '',
+    time: entryTime || '',
     wheeze: document.getElementById('f-wheeze').checked,
     wheezeSeverity: selectedWheeze,
     cough: document.getElementById('f-cough').checked,
@@ -1070,6 +1071,19 @@ document.getElementById('entryList').addEventListener('click', (ev) => {
 const YES_NO_SERIES = new Set(['Phlegm (present)']);
 const SEVERITY_SERIES = new Set(['Wheeze', 'Cough', 'Chest tightness', 'Shortness of breath']);
 
+// "Aug 2, 5:10 AM" rather than the raw "2026-08-02 05:10" — the full ISO
+// date/time made every x-axis label long enough that, rotated 45°, they
+// packed edge-to-edge across 20 entries.
+function formatTrendLabel(e){
+  if(!e.date) return '';
+  const d = new Date(e.date + 'T' + (e.time || '00:00'));
+  if(isNaN(d)) return e.date;
+  const datePart = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  if(!e.time) return datePart;
+  const timePart = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  return `${datePart}, ${timePart}`;
+}
+
 function renderChart(){
   const chartData = entries.slice(0, 20).reverse();
   const ctx = document.getElementById('trendChart');
@@ -1083,7 +1097,7 @@ function renderChart(){
     return;
   }
 
-  const labels = chartData.map(e => (e.date || '') + (e.time ? ' ' + e.time : ''));
+  const labels = chartData.map(formatTrendLabel);
   const wheezeData = chartData.map(e => e.wheezeSeverity ?? null);
   const coughData = chartData.map(e => e.coughSeverity ?? null);
   const chestData = chartData.map(e => e.chestSeverity ?? null);
@@ -1107,7 +1121,8 @@ function renderChart(){
           yAxisID: 'ySev',
           tension: 0.25,
           spanGaps: true,
-          pointRadius: 3
+          pointRadius: 3,
+          pointStyle: 'circle'
         },
         {
           label: 'Cough',
@@ -1117,7 +1132,9 @@ function renderChart(){
           yAxisID: 'ySev',
           tension: 0.25,
           spanGaps: true,
-          pointRadius: 3
+          pointRadius: 3,
+          pointStyle: 'rectRot',
+          borderDash: [6,4]
         },
         {
           label: 'Chest tightness',
@@ -1127,7 +1144,9 @@ function renderChart(){
           yAxisID: 'ySev',
           tension: 0.25,
           spanGaps: true,
-          pointRadius: 3
+          pointRadius: 3,
+          pointStyle: 'triangle',
+          borderDash: [1,3]
         },
         {
           label: 'Shortness of breath',
@@ -1137,7 +1156,9 @@ function renderChart(){
           yAxisID: 'ySev',
           tension: 0.25,
           spanGaps: true,
-          pointRadius: 3
+          pointRadius: 3,
+          pointStyle: 'rect',
+          borderDash: [9,3,2,3]
         },
         {
           label: 'Phlegm (present)',
@@ -1146,7 +1167,8 @@ function renderChart(){
           backgroundColor: pal.phlegm,
           yAxisID: 'ySev',
           stepped: true,
-          pointRadius: 2
+          pointRadius: 2,
+          pointStyle: 'star'
         },
         {
           label: 'AQI',
@@ -1157,7 +1179,9 @@ function renderChart(){
           borderDash: [2,2],
           tension: 0.25,
           spanGaps: true,
-          pointRadius: 2
+          pointRadius: 2,
+          pointStyle: 'circle',
+          order: 1
         }
       ]
     },
@@ -1193,8 +1217,8 @@ function renderChart(){
       },
       scales: {
         x: {
-          ticks: { color: pal.textMuted, font: { family: 'JetBrains Mono', size: 10 }, maxRotation: 45, minRotation: 45 },
-          grid: { color: pal.gridLine }
+          ticks: { color: pal.textMuted, font: { family: 'JetBrains Mono', size: 10 }, maxRotation: 45, minRotation: 45, autoSkip: true, maxTicksLimit: 10 },
+          grid: { display: false }
         },
         ySev: {
           type: 'linear',
@@ -1543,8 +1567,7 @@ function editEntry(id){
   document.getElementById('save-btn').textContent = 'Update entry';
   document.getElementById('cancel-edit-btn').style.display = 'inline-block';
 
-  document.getElementById('f-date').value = entry.date || '';
-  document.getElementById('f-time').value = entry.time || '';
+  document.getElementById('f-datetime').value = entry.date ? entry.date + 'T' + (entry.time || '00:00') : '';
   document.getElementById('f-wheeze').checked = !!entry.wheeze;
   document.getElementById('sev-wheeze-wrap').style.display = entry.wheeze ? 'block' : 'none';
   const hasCough = !!entry.cough || entry.coughSeverity != null;

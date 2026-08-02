@@ -37,12 +37,23 @@ Versions follow semver. The git tag is what makes a release; see
   against pollen index, and average severity by setting. The existing
   multi-symptom trend line stays as the detail view underneath them.
 
+### Changed
+
+- Date and Time are now a single combined "Date & time" field
+  (`datetime-local`) instead of two separate inputs. Two adjacent native
+  picker controls didn't always render at a consistent height across
+  browsers, which made their calendar/clock icons crowd the entry row; one
+  field removes the mismatch entirely.
+
 ### Fixed
 
-- Date and Time inputs could render at slightly different heights depending
-  on the browser engine — native date/time picker controls don't always get
-  the same intrinsic height as a plain text input even with identical CSS.
-  Both now have an explicit height so a Date/Time row always lines up.
+- The "Symptom severity & AQI — last 20 entries" trend chart was hard to
+  read: x-axis labels were full date-times ("2026-08-02 05:10") rotated 45°
+  and packed edge to edge, and several series that share the same 0–3/0–1
+  scale (e.g. Cough and Shortness of breath) could sit on identical values
+  with no way to tell their lines apart. Labels are now short ("Aug 2, 5:10
+  AM"), each line has a distinct dash pattern and point shape, and AQI now
+  draws behind the symptom lines instead of over them.
 
 ## 1.1.0
 
