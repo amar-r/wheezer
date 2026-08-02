@@ -141,6 +141,10 @@ h1{
   margin-bottom:16px;
 }
 .field{margin-bottom:16px;}
+.section-label{
+  font-weight:700;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;
+  color:var(--teal);margin:28px 0 14px;padding-top:18px;border-top:1px solid var(--line);
+}
 label{
   display:block;font-size:0.78rem;font-weight:600;
   text-transform:uppercase;letter-spacing:0.04em;
@@ -151,9 +155,19 @@ input[type=text],input[type=date],input[type=time],input[type=number],textarea,s
   border-radius:4px;font-family:'Inter';font-size:0.92rem;
   background:var(--paper);color:var(--ink);
 }
+/* date/time inputs render their native picker control at a slightly
+   different intrinsic height than plain text inputs on some engines
+   (notably Safari) even with identical padding — pin an explicit height
+   so a Date/Time row (or any input row) always lines up. */
+input[type=text],input[type=date],input[type=time],input[type=number],select{
+  height:42px;
+}
 textarea{min-height:56px;resize:vertical;}
 .row{display:flex;gap:14px;flex-wrap:wrap;}
 .row > .field{flex:1;min-width:140px;}
+/* Placeholder text wraps to 3 lines at half the width the meal textareas used
+   to have, which clipped against the shared 56px min-height. */
+.row > .field textarea{min-height:76px;}
 .severity{display:flex;gap:6px;}
 .sev-btn{
   flex:1;padding:9px 0;text-align:center;border:1px solid var(--line);
@@ -223,6 +237,27 @@ textarea{min-height:56px;resize:vertical;}
 .entry-actions{margin-top:8px;}
 .entry-sep{color:var(--line);margin:0 8px;}
 .chart-box{position:relative;height:260px;}
+.chart-box-sm{height:220px;}
+.chart-row{display:flex;gap:16px;margin-bottom:16px;}
+.chart-row > .chart-wrap{flex:1;min-width:0;margin-bottom:0;}
+
+.heatmap-scroll{overflow-x:auto;padding-bottom:4px;}
+.heatmap-inner{display:inline-block;}
+.heatmap-months{display:flex;gap:3px;margin-bottom:4px;}
+.heat-month{width:13px;flex-shrink:0;font-size:0.65rem;color:var(--ink-soft);font-family:'JetBrains Mono';white-space:nowrap;}
+.heatmap-grid{display:flex;gap:3px;}
+.heat-week{display:flex;flex-direction:column;gap:3px;}
+.heat-cell{width:13px;height:13px;border-radius:3px;background:var(--paper-2);border:1px solid var(--line);}
+.heat-cell[data-sev]{background:color-mix(in srgb, var(--amber) var(--sev-pct,12%), var(--paper-2));}
+.heat-cell.no-entry{border-style:dashed;}
+.heat-cell.future{visibility:hidden;}
+.heat-legend{display:flex;align-items:center;gap:6px;margin-top:12px;font-size:0.72rem;color:var(--ink-soft);}
+.heat-legend .heat-cell{width:12px;height:12px;}
+.heat-tooltip{
+  position:fixed;pointer-events:none;z-index:20;display:none;
+  color:#fff;font-family:'Inter';font-size:0.78rem;
+  padding:5px 9px;border-radius:4px;white-space:nowrap;
+}
 
 /* Keep iOS from re-scaling text on orientation change, and make sure nothing
    can push the page wider than the viewport. */
@@ -248,6 +283,10 @@ canvas,svg,img{max-width:100%;}
   /* Taller on mobile: the legend wraps to more rows at narrow widths and would
      otherwise eat into the plot area. */
   .chart-box{height:320px;}
+  .chart-box-sm{height:260px;}
+  .chart-row{flex-direction:column;}
+  .heat-cell{width:11px;height:11px;}
+  .heat-month{width:11px;}
 
   /* min-width:140px on a flex child can't shrink below its floor, which is
      what overflows the row on a narrow screen. */
@@ -303,6 +342,8 @@ canvas,svg,img{max-width:100%;}
           <input type="time" id="f-time">
         </div>
       </div>
+
+      <div class="section-label">Symptoms</div>
 
       <div class="field">
         <label>Wheezing occurred?</label>
@@ -387,6 +428,8 @@ canvas,svg,img{max-width:100%;}
         </div>
       </div>
 
+      <div class="section-label">Inhaler use</div>
+
       <div class="row">
         <div class="field">
           <label>Inhaler — scheduled dose taken?</label>
@@ -403,6 +446,8 @@ canvas,svg,img{max-width:100%;}
           </div>
         </div>
       </div>
+
+      <div class="section-label">Environment</div>
 
       <div class="row">
         <div class="field">
@@ -466,22 +511,30 @@ canvas,svg,img{max-width:100%;}
         </select>
       </div>
 
-      <div class="field">
-        <label>Breakfast</label>
-        <textarea id="f-breakfast" placeholder="What did you eat/drink for breakfast?"></textarea>
+      <div class="section-label">Diet</div>
+
+      <div class="row">
+        <div class="field">
+          <label>Breakfast</label>
+          <textarea id="f-breakfast" placeholder="What did you eat/drink for breakfast?"></textarea>
+        </div>
+        <div class="field">
+          <label>Lunch</label>
+          <textarea id="f-lunch" placeholder="What did you eat/drink for lunch?"></textarea>
+        </div>
       </div>
-      <div class="field">
-        <label>Lunch</label>
-        <textarea id="f-lunch" placeholder="What did you eat/drink for lunch?"></textarea>
+      <div class="row">
+        <div class="field">
+          <label>Dinner</label>
+          <textarea id="f-dinner" placeholder="What did you eat/drink for dinner?"></textarea>
+        </div>
+        <div class="field">
+          <label>Snacks</label>
+          <textarea id="f-snacks" placeholder="Anything snacked on throughout the day"></textarea>
+        </div>
       </div>
-      <div class="field">
-        <label>Dinner</label>
-        <textarea id="f-dinner" placeholder="What did you eat/drink for dinner?"></textarea>
-      </div>
-      <div class="field">
-        <label>Snacks</label>
-        <textarea id="f-snacks" placeholder="Anything snacked on throughout the day"></textarea>
-      </div>
+
+      <div class="section-label">Notes</div>
 
       <div class="field">
         <label>Other notes (triggers, stress, illness, pets, cleaning products, etc.)</label>
@@ -502,7 +555,57 @@ canvas,svg,img{max-width:100%;}
       <div class="stat"><div class="n" id="stat-avgsev">–</div><div class="l">Avg severity / 7d</div></div>
     </div>
     <div class="chart-wrap">
-      <div class="chart-title">Symptom severity &amp; AQI over time</div>
+      <div class="chart-title">Rescue inhaler puffs per day</div>
+      <div class="chart-box">
+        <canvas id="rescueChart"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-wrap">
+      <div class="chart-title">Daily max severity</div>
+      <div class="heatmap-scroll">
+        <div class="heatmap-inner">
+          <div class="heatmap-months" id="heatmapMonths"></div>
+          <div class="heatmap-grid" id="heatmapGrid"></div>
+        </div>
+      </div>
+      <div class="heat-legend">
+        <span>No entry</span><span class="heat-cell no-entry"></span>
+        <span>0</span>
+        <span class="heat-cell" data-sev style="--sev-pct:12%;"></span>
+        <span class="heat-cell" data-sev style="--sev-pct:29.6%;"></span>
+        <span class="heat-cell" data-sev style="--sev-pct:47.2%;"></span>
+        <span class="heat-cell" data-sev style="--sev-pct:64.8%;"></span>
+        <span class="heat-cell" data-sev style="--sev-pct:82.4%;"></span>
+        <span class="heat-cell" data-sev style="--sev-pct:100%;"></span><span>5</span>
+      </div>
+      <div class="heat-tooltip" id="heatTooltip"></div>
+    </div>
+
+    <div class="chart-row">
+      <div class="chart-wrap">
+        <div class="chart-title">Severity vs AQI</div>
+        <div class="chart-box chart-box-sm">
+          <canvas id="sevAqiChart"></canvas>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-title">Severity vs pollen index</div>
+        <div class="chart-box chart-box-sm">
+          <canvas id="sevPollenChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-wrap">
+      <div class="chart-title">Avg severity by setting</div>
+      <div class="chart-box">
+        <canvas id="settingChart"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-wrap">
+      <div class="chart-title">Symptom severity &amp; AQI — last 20 entries</div>
       <div class="chart-box">
         <canvas id="trendChart"></canvas>
       </div>
@@ -527,6 +630,9 @@ let selectedChest = null;
 let selectedShortness = null;
 let rescueCount = 0;
 let trendChartInstance = null;
+let rescueChartInstance = null;
+let settingChartInstance = null;
+const scatterInstances = {};
 let editingEntryId = null;
 
 const THEME_KEY = 'wheezer-theme';
@@ -573,9 +679,18 @@ function updateThemeToggleLabel(){
   document.getElementById('theme-toggle').textContent = stored === 'light' ? 'Light' : stored === 'dark' ? 'Dark' : 'Auto';
 }
 
+function renderAllCharts(){
+  renderChart();
+  renderRescueChart();
+  renderHeatmap();
+  renderTriggerScatter('sevAqiChart', 'aqi', 'AQI', chartPalette().shortness);
+  renderTriggerScatter('sevPollenChart', 'pollenIndex', 'Pollen index', chartPalette().chest);
+  renderSettingChart();
+}
+
 function refreshChartsForTheme(){
   if (document.getElementById('tab-history').style.display === 'block') {
-    renderChart();
+    renderAllCharts();
   }
 }
 
@@ -895,7 +1010,7 @@ function renderHistory(){
   document.getElementById('stat-rescue').textContent = rescue7;
   document.getElementById('stat-avgsev').textContent = avgSev7;
 
-  renderChart();
+  renderAllCharts();
 
   const list = document.getElementById('entryList');
   if(!entries.length){
@@ -1109,6 +1224,296 @@ function renderChart(){
         }
       }
     }
+  });
+}
+
+function hexToRgba(hex, alpha){
+  const h = hex.replace('#','');
+  const r = parseInt(h.substring(0,2),16), g = parseInt(h.substring(2,4),16), b = parseInt(h.substring(4,6),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function aggregateRescueByDay(){
+  const map = new Map();
+  entries.forEach(e=>{
+    if(!e.date) return;
+    map.set(e.date, (map.get(e.date)||0) + (parseInt(e.rescuePuffs)||0));
+  });
+  return [...map.entries()].sort((a,b)=> a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
+}
+
+function renderRescueChart(){
+  const ctx = document.getElementById('rescueChart');
+  if(rescueChartInstance){ rescueChartInstance.destroy(); rescueChartInstance = null; }
+  const daily = aggregateRescueByDay().slice(-30);
+  if(!daily.length) return;
+  const pal = chartPalette();
+
+  rescueChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: daily.map(d=>d[0]),
+      datasets: [{
+        label: 'Rescue puffs',
+        data: daily.map(d=>d[1]),
+        backgroundColor: pal.wheeze,
+        borderRadius: 3,
+        maxBarThickness: 28
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: pal.tooltipBg,
+          titleFont: { family: 'JetBrains Mono', size: 11 },
+          bodyFont: { family: 'Inter', size: 12 }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: pal.textMuted, font: { family: 'JetBrains Mono', size: 10 }, maxRotation: 45, minRotation: 45 },
+          grid: { display: false }
+        },
+        y: {
+          beginAtZero: true,
+          ticks: { color: pal.textMuted, font: { family: 'Inter', size: 10 }, stepSize: 1 },
+          grid: { color: pal.gridLine },
+          title: { display: true, text: 'Rescue puffs', color: pal.textMuted, font: { family: 'Inter', size: 11 } }
+        }
+      }
+    }
+  });
+}
+
+function renderTriggerScatter(canvasId, field, xLabel, color){
+  const ctx = document.getElementById(canvasId);
+  if(scatterInstances[canvasId]){ scatterInstances[canvasId].destroy(); scatterInstances[canvasId] = null; }
+
+  const points = entries
+    .filter(e => e[field] !== undefined && e[field] !== null && e[field] !== '' && !Number.isNaN(Number(e[field])))
+    .map(e => ({ x: Number(e[field]), y: maxSeverity(e) }));
+  if(!points.length) return;
+
+  const pal = chartPalette();
+  const pointColor = hexToRgba(color, 0.65);
+
+  scatterInstances[canvasId] = new Chart(ctx, {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        label: 'Entries',
+        data: points,
+        backgroundColor: pointColor,
+        borderColor: color,
+        pointRadius: 5,
+        pointHoverRadius: 7
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: pal.tooltipBg,
+          titleFont: { family: 'JetBrains Mono', size: 11 },
+          bodyFont: { family: 'Inter', size: 12 },
+          callbacks: {
+            label: (ctx) => `${xLabel} ${ctx.parsed.x} · severity ${ctx.parsed.y}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          title: { display: true, text: xLabel, color: pal.textMuted, font: { family: 'Inter', size: 11 } },
+          ticks: { color: pal.textMuted, font: { family: 'Inter', size: 10 } },
+          grid: { color: pal.gridLine }
+        },
+        y: {
+          title: { display: true, text: 'Max severity (0–5)', color: pal.textMuted, font: { family: 'Inter', size: 11 } },
+          min: 0,
+          max: 5,
+          ticks: { color: pal.textMuted, font: { family: 'Inter', size: 10 }, stepSize: 1 },
+          grid: { color: pal.gridLine }
+        }
+      }
+    }
+  });
+}
+
+function aggregateSeverityBySetting(){
+  const buckets = new Map();
+  entries.forEach(e=>{
+    const key = e.setting || '(not set)';
+    if(!buckets.has(key)) buckets.set(key, { sum: 0, count: 0 });
+    const b = buckets.get(key);
+    b.sum += maxSeverity(e);
+    b.count++;
+  });
+  return [...buckets.entries()]
+    .map(([label, b]) => ({ label, avg: b.sum / b.count, count: b.count }))
+    .sort((a,b) => b.avg - a.avg);
+}
+
+function renderSettingChart(){
+  const ctx = document.getElementById('settingChart');
+  if(settingChartInstance){ settingChartInstance.destroy(); settingChartInstance = null; }
+  const rows = aggregateSeverityBySetting();
+  if(!rows.length) return;
+  const pal = chartPalette();
+
+  settingChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: rows.map(r=>r.label),
+      datasets: [{
+        label: 'Avg severity',
+        data: rows.map(r=>r.avg),
+        backgroundColor: pal.chest,
+        borderRadius: 3,
+        maxBarThickness: 60
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: pal.tooltipBg,
+          titleFont: { family: 'JetBrains Mono', size: 11 },
+          bodyFont: { family: 'Inter', size: 12 },
+          callbacks: {
+            label: (ctx) => {
+              const r = rows[ctx.dataIndex];
+              return `avg severity ${r.avg.toFixed(1)} · ${r.count} entr${r.count===1?'y':'ies'}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: pal.textMuted, font: { family: 'Inter', size: 10 }, maxRotation: 30, minRotation: 0 },
+          grid: { display: false }
+        },
+        y: {
+          min: 0,
+          max: 5,
+          ticks: { color: pal.textMuted, font: { family: 'Inter', size: 10 }, stepSize: 1 },
+          grid: { color: pal.gridLine },
+          title: { display: true, text: 'Avg max severity (0–5)', color: pal.textMuted, font: { family: 'Inter', size: 11 } }
+        }
+      }
+    }
+  });
+}
+
+// One record per calendar day: the worst severity logged that day, and how
+// many entries contributed to it (multiple entries/day are common — morning +
+// evening logging).
+function buildDailySeverityMap(){
+  const map = new Map();
+  entries.forEach(e=>{
+    if(!e.date) return;
+    const sev = maxSeverity(e);
+    const cur = map.get(e.date);
+    if(cur){ cur.count++; if(sev > cur.sev) cur.sev = sev; }
+    else map.set(e.date, { sev, count: 1 });
+  });
+  return map;
+}
+
+function showHeatTooltip(ev, label){
+  const tooltip = document.getElementById('heatTooltip');
+  tooltip.textContent = label;
+  tooltip.style.background = chartPalette().tooltipBg;
+  tooltip.style.left = (ev.clientX + 12) + 'px';
+  tooltip.style.top = (ev.clientY - 28) + 'px';
+  tooltip.style.display = 'block';
+}
+
+function hideHeatTooltip(){
+  document.getElementById('heatTooltip').style.display = 'none';
+}
+
+// GitHub-style contribution grid: fixed 18-week window ending on the current
+// week, columns are weeks (Sun–Sat), color intensity is the day's worst
+// severity. Plain CSS grid rather than a Chart.js plugin — no matrix-chart
+// dependency needed for a calendar layout.
+function renderHeatmap(){
+  const monthsRow = document.getElementById('heatmapMonths');
+  const grid = document.getElementById('heatmapGrid');
+  monthsRow.innerHTML = '';
+  grid.innerHTML = '';
+
+  const dailyMap = buildDailySeverityMap();
+  const WEEKS = 18;
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const gridEnd = new Date(today);
+  gridEnd.setDate(today.getDate() + (6 - today.getDay()));
+  const gridStart = new Date(gridEnd);
+  gridStart.setDate(gridEnd.getDate() - (WEEKS*7 - 1));
+
+  const weeks = [];
+  let cursor = new Date(gridStart);
+  for(let w=0; w<WEEKS; w++){
+    const week = [];
+    for(let d=0; d<7; d++){
+      week.push(new Date(cursor));
+      cursor.setDate(cursor.getDate()+1);
+    }
+    weeks.push(week);
+  }
+
+  // A 3-letter label is wider than one 13px column, so two labels back-to-back
+  // (e.g. a month change on consecutive weeks) would overlap — require a
+  // minimum column gap since the last label, same as GitHub's contribution graph.
+  let lastMonth = null;
+  let lastLabelIndex = -Infinity;
+  weeks.forEach((week, i)=>{
+    const label = document.createElement('div');
+    label.className = 'heat-month';
+    const firstOfWeek = week[0];
+    if(firstOfWeek.getMonth() !== lastMonth && firstOfWeek <= today && i - lastLabelIndex >= 2){
+      label.textContent = firstOfWeek.toLocaleDateString('en-US', { month: 'short' });
+      lastMonth = firstOfWeek.getMonth();
+      lastLabelIndex = i;
+    }
+    monthsRow.appendChild(label);
+  });
+
+  weeks.forEach(week=>{
+    const col = document.createElement('div');
+    col.className = 'heat-week';
+    week.forEach(dateObj=>{
+      const cell = document.createElement('div');
+      cell.className = 'heat-cell';
+      if(dateObj > today){
+        cell.classList.add('future');
+      } else {
+        const key = dateObj.toISOString().slice(0,10);
+        const rec = dailyMap.get(key);
+        const dateLabel = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        if(rec){
+          cell.dataset.sev = String(rec.sev);
+          cell.style.setProperty('--sev-pct', (12 + rec.sev * 17.6) + '%');
+        } else {
+          cell.classList.add('no-entry');
+        }
+        const tooltipLabel = rec
+          ? `${dateLabel} — max severity ${rec.sev}, ${rec.count} entr${rec.count===1?'y':'ies'}`
+          : `${dateLabel} — no entry`;
+        cell.addEventListener('mouseenter', ev => showHeatTooltip(ev, tooltipLabel));
+        cell.addEventListener('mousemove', ev => showHeatTooltip(ev, tooltipLabel));
+        cell.addEventListener('mouseleave', hideHeatTooltip);
+      }
+      col.appendChild(cell);
+    });
+    grid.appendChild(col);
   });
 }
 
