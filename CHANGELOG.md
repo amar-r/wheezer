@@ -3,7 +3,11 @@
 Versions follow semver. The git tag is what makes a release; see
 [README](README.md#versioning-and-releases).
 
-## Unreleased
+## 1.3.0
+
+Environment lookups move from zip codes to address search. The API key now
+needs the Places API (New) enabled alongside the other three — read the first
+entry before upgrading.
 
 ### Changed
 
