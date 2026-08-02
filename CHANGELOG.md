@@ -3,7 +3,13 @@
 Versions follow semver. The git tag is what makes a release; see
 [README](README.md#versioning-and-releases).
 
-## Unreleased
+## 1.2.0
+
+Adds the History & Trends charts, reworks how severity and inhaler use are
+recorded, and hardens the paid lookups. Existing entries are read as they
+stand: old severity values are kept and clamped rather than rewritten, and the
+retired inhaler fields still export to CSV and prefill when you edit an old
+entry.
 
 ### Security
 
@@ -20,16 +26,6 @@ Versions follow semver. The git tag is what makes a release; see
   this origin, so the policy costs nothing. It still needs `'unsafe-inline'`
   for the page's inline script and style blocks.
 
-### Changed
-
-- Stored entries are capped (`MAX_ENTRIES`, default 50000) and request bodies
-  are limited to 32kb, down from Express's 100kb default. Normal use won't come
-  near either; they're here so a stuck client can't fill the disk.
-- The New Entry form is split into labeled sections (Symptoms, Inhaler use,
-  Environment, Diet, Notes) instead of one undivided list of 25+ fields, and
-  the four meal fields are paired into two columns instead of stacking
-  full-width.
-
 ### Added
 
 - History & Trends gained four charts: rescue inhaler puffs per day, a
@@ -39,11 +35,27 @@ Versions follow semver. The git tag is what makes a release; see
 
 ### Changed
 
+- Severity is now a labeled 4-point scale (None/Mild/Moderate/Severe, stored
+  0–3) rather than an unlabeled 0–5, across the entry form, the entry list and
+  the charts. Entries recorded on the old scale keep their raw value; charts
+  clamp them to the Severe end instead of clipping them, and a value outside
+  the range falls back to showing the number.
+- The "scheduled dose" checkbox and "rescue puffs" counter are replaced by a
+  single "Inhaler puffs" field, defaulting to 2 because that's the usual dose
+  on the days this gets logged at all. The retired fields still export to CSV
+  and prefill when you edit an older entry.
 - Date and Time are now a single combined "Date & time" field
   (`datetime-local`) instead of two separate inputs. Two adjacent native
   picker controls didn't always render at a consistent height across
   browsers, which made their calendar/clock icons crowd the entry row; one
   field removes the mismatch entirely.
+- Stored entries are capped (`MAX_ENTRIES`, default 50000) and request bodies
+  are limited to 32kb, down from Express's 100kb default. Normal use won't come
+  near either; they're here so a stuck client can't fill the disk.
+- The New Entry form is split into labeled sections (Symptoms, Inhaler use,
+  Environment, Diet, Notes) instead of one undivided list of 25+ fields, and
+  the four meal fields are paired into two columns instead of stacking
+  full-width.
 
 ### Fixed
 
