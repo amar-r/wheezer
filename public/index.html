@@ -162,12 +162,22 @@ input[type=text],input[type=datetime-local],input[type=number],textarea,select{
 input[type=text],input[type=datetime-local],input[type=number],select{
   height:42px;
 }
+/* iOS Safari gives date inputs an intrinsic content width and centers the
+   value when the field is wider than that, so this one control sat centered
+   while every other input in the form left-aligns. Resetting the native
+   appearance is what lets text-align apply. */
+input[type=datetime-local]{
+  -webkit-appearance:none;
+  appearance:none;
+  text-align:left;
+}
 textarea{min-height:56px;resize:vertical;}
-.row{display:flex;gap:14px;flex-wrap:wrap;}
+/* Labels in a paired row wrap to different numbers of lines (one-line "Pollen
+   level" beside a three-line "Pollen index"), which used to leave the two
+   inputs sitting at different heights. Aligning on the bottom edge keeps the
+   inputs level however the labels above them wrap. */
+.row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;}
 .row > .field{flex:1;min-width:140px;}
-/* Placeholder text wraps to 3 lines at half the width the meal textareas used
-   to have, which clipped against the shared 56px min-height. */
-.row > .field textarea{min-height:76px;}
 .severity{display:flex;gap:6px;}
 .sev-btn{
   flex:1;padding:9px 4px;text-align:center;border:1px solid var(--line);
@@ -175,12 +185,19 @@ textarea{min-height:56px;resize:vertical;}
   background:var(--paper);color:var(--ink-soft);
 }
 .sev-btn.selected{background:var(--teal);color:var(--white);border-color:var(--teal);}
-.check-row{display:flex;gap:18px;align-items:center;flex-wrap:wrap;}
-.check-item{display:flex;align-items:center;gap:6px;font-size:0.9rem;}
+.check-item{display:flex;align-items:center;gap:10px;font-size:0.95rem;}
+/* The symptom checkboxes carry their own text, so the uppercase label style
+   used elsewhere would be wrong here. Wrapping the input in the label makes
+   the whole row a tap target rather than just the 22px box. */
+label.check-item{
+  font-weight:400;text-transform:none;letter-spacing:0;
+  color:var(--ink);margin:0;cursor:pointer;min-height:44px;
+}
+.symptom .severity{margin:0 0 10px 30px;}
 .count-input{display:flex;align-items:center;gap:8px;}
 .count-input button{
-  width:30px;height:30px;border:1px solid var(--line);background:var(--paper);
-  border-radius:4px;cursor:pointer;font-size:1rem;color:var(--teal);
+  width:44px;height:44px;border:1px solid var(--line);background:var(--paper);
+  border-radius:4px;cursor:pointer;font-size:1.25rem;color:var(--teal);
 }
 .count-input span{font-family:'JetBrains Mono';min-width:20px;text-align:center;}
 
@@ -298,9 +315,9 @@ canvas,svg,img{max-width:100%;}
 
   /* Comfortable tap targets */
   .sev-btn{padding:13px 0;}
-  .count-input button{width:38px;height:38px;}
+  .count-input button{width:44px;height:44px;}
   .check-item{padding:2px 0;}
-  .check-item input[type=checkbox]{width:18px;height:18px;}
+  .check-item input[type=checkbox]{width:22px;height:22px;}
   .btn-primary{padding:13px 20px;white-space:normal;}
   .del{padding:6px 0;}
 
@@ -339,79 +356,56 @@ canvas,svg,img{max-width:100%;}
 
       <div class="section-label">Symptoms</div>
 
-      <div class="field">
-        <label>Wheezing occurred?</label>
-        <div class="check-row">
-          <div class="check-item"><input type="checkbox" id="f-wheeze"> <span>Yes, wheezing present</span></div>
+      <div class="symptom">
+        <label class="check-item"><input type="checkbox" id="f-wheeze"> <span>Wheezing</span></label>
+        <div id="sev-wheeze-wrap" style="display:none;">
+          <div class="severity" id="sev-wheeze">
+            <div class="sev-btn" data-val="0">None</div>
+            <div class="sev-btn" data-val="1">Mild</div>
+            <div class="sev-btn" data-val="2">Moderate</div>
+            <div class="sev-btn" data-val="3">Severe</div>
+          </div>
         </div>
       </div>
 
-      <div class="field" id="sev-wheeze-wrap" style="display:none;">
-        <label>Wheeze / breathing difficulty severity</label>
-        <div class="severity" id="sev-wheeze">
-          <div class="sev-btn" data-val="0">None</div>
-          <div class="sev-btn" data-val="1">Mild</div>
-          <div class="sev-btn" data-val="2">Moderate</div>
-          <div class="sev-btn" data-val="3">Severe</div>
+      <div class="symptom">
+        <label class="check-item"><input type="checkbox" id="f-cough"> <span>Coughing</span></label>
+        <div id="sev-cough-wrap" style="display:none;">
+          <div class="severity" id="sev-cough">
+            <div class="sev-btn" data-val="0">None</div>
+            <div class="sev-btn" data-val="1">Mild</div>
+            <div class="sev-btn" data-val="2">Moderate</div>
+            <div class="sev-btn" data-val="3">Severe</div>
+          </div>
         </div>
       </div>
 
-      <div class="field">
-        <label>Coughing occurred?</label>
-        <div class="check-row">
-          <div class="check-item"><input type="checkbox" id="f-cough"> <span>Yes, coughing present</span></div>
+      <div class="symptom">
+        <label class="check-item"><input type="checkbox" id="f-chest"> <span>Chest tightness</span></label>
+        <div id="sev-chest-wrap" style="display:none;">
+          <div class="severity" id="sev-chest">
+            <div class="sev-btn" data-val="0">None</div>
+            <div class="sev-btn" data-val="1">Mild</div>
+            <div class="sev-btn" data-val="2">Moderate</div>
+            <div class="sev-btn" data-val="3">Severe</div>
+          </div>
         </div>
       </div>
 
-      <div class="field" id="sev-cough-wrap" style="display:none;">
-        <label>Coughing severity</label>
-        <div class="severity" id="sev-cough">
-          <div class="sev-btn" data-val="0">None</div>
-          <div class="sev-btn" data-val="1">Mild</div>
-          <div class="sev-btn" data-val="2">Moderate</div>
-          <div class="sev-btn" data-val="3">Severe</div>
+      <div class="symptom">
+        <label class="check-item"><input type="checkbox" id="f-shortness"> <span>Shortness of breath</span></label>
+        <div id="sev-shortness-wrap" style="display:none;">
+          <div class="severity" id="sev-shortness">
+            <div class="sev-btn" data-val="0">None</div>
+            <div class="sev-btn" data-val="1">Mild</div>
+            <div class="sev-btn" data-val="2">Moderate</div>
+            <div class="sev-btn" data-val="3">Severe</div>
+          </div>
         </div>
       </div>
 
-      <div class="field">
-        <label>Chest tightness occurred?</label>
-        <div class="check-row">
-          <div class="check-item"><input type="checkbox" id="f-chest"> <span>Yes, chest tightness present</span></div>
-        </div>
-      </div>
-
-      <div class="field" id="sev-chest-wrap" style="display:none;">
-        <label>Chest tightness severity</label>
-        <div class="severity" id="sev-chest">
-          <div class="sev-btn" data-val="0">None</div>
-          <div class="sev-btn" data-val="1">Mild</div>
-          <div class="sev-btn" data-val="2">Moderate</div>
-          <div class="sev-btn" data-val="3">Severe</div>
-        </div>
-      </div>
-
-      <div class="field">
-        <label>Shortness of breath?</label>
-        <div class="check-row">
-          <div class="check-item"><input type="checkbox" id="f-shortness"> <span>Yes, short of breath</span></div>
-        </div>
-      </div>
-
-      <div class="field" id="sev-shortness-wrap" style="display:none;">
-        <label>Shortness of breath severity</label>
-        <div class="severity" id="sev-shortness">
-          <div class="sev-btn" data-val="0">None</div>
-          <div class="sev-btn" data-val="1">Mild</div>
-          <div class="sev-btn" data-val="2">Moderate</div>
-          <div class="sev-btn" data-val="3">Severe</div>
-        </div>
-      </div>
-
-      <div class="field">
-        <label>Phlegm / mucus?</label>
-        <div class="check-row">
-          <div class="check-item"><input type="checkbox" id="f-phlegm"> <span>Yes, phlegm / mucus present</span></div>
-        </div>
+      <div class="symptom">
+        <label class="check-item"><input type="checkbox" id="f-phlegm"> <span>Phlegm / mucus</span></label>
       </div>
 
       <div class="section-label">Inhaler use</div>
@@ -433,7 +427,7 @@ canvas,svg,img{max-width:100%;}
           <input type="text" id="f-zip" placeholder="e.g. 10001" maxlength="5" inputmode="numeric">
         </div>
         <div class="field" style="display:flex;align-items:flex-end;">
-          <button type="button" class="btn-primary" id="aqi-fetch-btn" style="width:100%;">Fetch AQI, Weather &amp; Pollen</button>
+          <button type="button" class="btn-primary" id="aqi-fetch-btn" style="width:100%;">Fetch conditions</button>
         </div>
       </div>
       <div class="err" id="aqi-err" style="display:none;margin-top:-8px;margin-bottom:16px;"></div>
@@ -455,7 +449,7 @@ canvas,svg,img{max-width:100%;}
           <input type="text" id="f-pollen-level" placeholder="e.g. High (tree)">
         </div>
         <div class="field">
-          <label>Pollen index (0–5, Universal Pollen Index)</label>
+          <label>Pollen index (0–5)</label>
           <input type="number" id="f-pollen-index" min="0" max="5" placeholder="e.g. 4">
         </div>
       </div>
@@ -494,21 +488,21 @@ canvas,svg,img{max-width:100%;}
       <div class="row">
         <div class="field">
           <label>Breakfast</label>
-          <textarea id="f-breakfast" placeholder="What did you eat/drink for breakfast?"></textarea>
+          <textarea id="f-breakfast" placeholder="e.g. eggs, coffee"></textarea>
         </div>
         <div class="field">
           <label>Lunch</label>
-          <textarea id="f-lunch" placeholder="What did you eat/drink for lunch?"></textarea>
+          <textarea id="f-lunch" placeholder="e.g. sandwich, soda"></textarea>
         </div>
       </div>
       <div class="row">
         <div class="field">
           <label>Dinner</label>
-          <textarea id="f-dinner" placeholder="What did you eat/drink for dinner?"></textarea>
+          <textarea id="f-dinner" placeholder="e.g. pasta, salad"></textarea>
         </div>
         <div class="field">
           <label>Snacks</label>
-          <textarea id="f-snacks" placeholder="Anything snacked on throughout the day"></textarea>
+          <textarea id="f-snacks" placeholder="e.g. chips, chocolate"></textarea>
         </div>
       </div>
 

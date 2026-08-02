@@ -3,6 +3,38 @@
 Versions follow semver. The git tag is what makes a release; see
 [README](README.md#versioning-and-releases).
 
+## Unreleased
+
+### Changed
+
+- The Symptoms section no longer asks each question twice. "WHEEZING
+  OCCURRED?" above a "Yes, wheezing present" checkbox is now just a checkbox
+  labelled "Wheezing", with the severity buttons still appearing underneath
+  when it's ticked. Five symptoms in a row of that shape were most of the
+  scroll on the entry form.
+- The meal placeholders were full sentences ("What did you eat/drink for
+  breakfast?") that wrapped to three lines in a half-width box and forced the
+  four boxes taller than they needed to be. They're short examples now.
+- "Fetch AQI, Weather & Pollen" is now "Fetch conditions", which fits on one
+  line beside the zip field instead of wrapping to two.
+- The inhaler puff steppers are 44px rather than 38px, matching the iOS
+  minimum tap target. They're the control you're most likely to be using while
+  actually short of breath.
+
+### Fixed
+
+- Inputs paired on one row sat at different heights whenever their labels
+  wrapped to a different number of lines, which was visible on Pollen level
+  next to Pollen index and on the zip field next to its fetch button. Rows now
+  align on the bottom edge, and the pollen label drops the redundant spelled
+  out "Universal Pollen Index" that caused the worst of it.
+
+- The Date & time field centered its value on iOS Safari while every other
+  input in the form left-aligns, leaving the entry card looking crooked.
+  Safari gives date inputs an intrinsic content width and centers the value
+  when the field is wider than that; resetting the native appearance is what
+  lets `text-align` apply.
+
 ## 1.2.0
 
 Adds the History & Trends charts, reworks how severity and inhaler use are
