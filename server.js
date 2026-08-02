@@ -400,7 +400,10 @@ app.get('/api/export/csv', (req, res) => {
   const columns = [
     'date', 'time', 'wheeze', 'wheezeSeverity', 'cough', 'coughSeverity', 'chest', 'chestSeverity',
     'shortness', 'shortnessSeverity', 'phlegm',
-    'scheduled', 'rescuePuffs', 'aqi', 'aqiPeak', 'pollenLevel', 'pollenIndex', 'tempF', 'humidity',
+    // inhalerPuffs replaced the old scheduled/rescuePuffs split; both stay
+    // here so entries logged before the change still export correctly.
+    'inhalerPuffs', 'scheduled', 'rescuePuffs',
+    'aqi', 'aqiPeak', 'pollenLevel', 'pollenIndex', 'tempF', 'humidity',
     'weather', 'setting', 'breakfast', 'lunch', 'dinner', 'snacks', 'notes'
   ];
 

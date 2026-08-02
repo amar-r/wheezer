@@ -158,7 +158,7 @@ input[type=text],input[type=date],input[type=time],input[type=number],textarea,s
 /* date/time inputs render their native picker control at a slightly
    different intrinsic height than plain text inputs on some engines
    (notably Safari) even with identical padding — pin an explicit height
-   so a Date/Time row (or any input row) always lines up. */
+   so any row of side-by-side inputs always lines up. */
 input[type=text],input[type=date],input[type=time],input[type=number],select{
   height:42px;
 }
@@ -170,8 +170,8 @@ textarea{min-height:56px;resize:vertical;}
 .row > .field textarea{min-height:76px;}
 .severity{display:flex;gap:6px;}
 .sev-btn{
-  flex:1;padding:9px 0;text-align:center;border:1px solid var(--line);
-  border-radius:4px;cursor:pointer;font-family:'JetBrains Mono';font-size:0.85rem;
+  flex:1;padding:9px 4px;text-align:center;border:1px solid var(--line);
+  border-radius:4px;cursor:pointer;font-family:'Inter';font-weight:500;font-size:0.85rem;
   background:var(--paper);color:var(--ink-soft);
 }
 .sev-btn.selected{background:var(--teal);color:var(--white);border-color:var(--teal);}
@@ -332,15 +332,13 @@ canvas,svg,img{max-width:100%;}
 
   <div id="tab-entry">
     <div class="card">
-      <div class="row">
-        <div class="field">
-          <label>Date</label>
-          <input type="date" id="f-date">
-        </div>
-        <div class="field">
-          <label>Time</label>
-          <input type="time" id="f-time">
-        </div>
+      <div class="field">
+        <label>Date</label>
+        <input type="date" id="f-date">
+      </div>
+      <div class="field">
+        <label>Time</label>
+        <input type="time" id="f-time">
       </div>
 
       <div class="section-label">Symptoms</div>
@@ -353,14 +351,12 @@ canvas,svg,img{max-width:100%;}
       </div>
 
       <div class="field" id="sev-wheeze-wrap" style="display:none;">
-        <label>Wheeze / breathing difficulty severity (0 = none, 5 = severe)</label>
+        <label>Wheeze / breathing difficulty severity</label>
         <div class="severity" id="sev-wheeze">
-          <div class="sev-btn" data-val="0">0</div>
-          <div class="sev-btn" data-val="1">1</div>
-          <div class="sev-btn" data-val="2">2</div>
-          <div class="sev-btn" data-val="3">3</div>
-          <div class="sev-btn" data-val="4">4</div>
-          <div class="sev-btn" data-val="5">5</div>
+          <div class="sev-btn" data-val="0">None</div>
+          <div class="sev-btn" data-val="1">Mild</div>
+          <div class="sev-btn" data-val="2">Moderate</div>
+          <div class="sev-btn" data-val="3">Severe</div>
         </div>
       </div>
 
@@ -372,14 +368,12 @@ canvas,svg,img{max-width:100%;}
       </div>
 
       <div class="field" id="sev-cough-wrap" style="display:none;">
-        <label>Coughing severity (0–5)</label>
+        <label>Coughing severity</label>
         <div class="severity" id="sev-cough">
-          <div class="sev-btn" data-val="0">0</div>
-          <div class="sev-btn" data-val="1">1</div>
-          <div class="sev-btn" data-val="2">2</div>
-          <div class="sev-btn" data-val="3">3</div>
-          <div class="sev-btn" data-val="4">4</div>
-          <div class="sev-btn" data-val="5">5</div>
+          <div class="sev-btn" data-val="0">None</div>
+          <div class="sev-btn" data-val="1">Mild</div>
+          <div class="sev-btn" data-val="2">Moderate</div>
+          <div class="sev-btn" data-val="3">Severe</div>
         </div>
       </div>
 
@@ -391,14 +385,12 @@ canvas,svg,img{max-width:100%;}
       </div>
 
       <div class="field" id="sev-chest-wrap" style="display:none;">
-        <label>Chest tightness severity (0–5)</label>
+        <label>Chest tightness severity</label>
         <div class="severity" id="sev-chest">
-          <div class="sev-btn" data-val="0">0</div>
-          <div class="sev-btn" data-val="1">1</div>
-          <div class="sev-btn" data-val="2">2</div>
-          <div class="sev-btn" data-val="3">3</div>
-          <div class="sev-btn" data-val="4">4</div>
-          <div class="sev-btn" data-val="5">5</div>
+          <div class="sev-btn" data-val="0">None</div>
+          <div class="sev-btn" data-val="1">Mild</div>
+          <div class="sev-btn" data-val="2">Moderate</div>
+          <div class="sev-btn" data-val="3">Severe</div>
         </div>
       </div>
 
@@ -410,14 +402,12 @@ canvas,svg,img{max-width:100%;}
       </div>
 
       <div class="field" id="sev-shortness-wrap" style="display:none;">
-        <label>Shortness of breath severity (0–5)</label>
+        <label>Shortness of breath severity</label>
         <div class="severity" id="sev-shortness">
-          <div class="sev-btn" data-val="0">0</div>
-          <div class="sev-btn" data-val="1">1</div>
-          <div class="sev-btn" data-val="2">2</div>
-          <div class="sev-btn" data-val="3">3</div>
-          <div class="sev-btn" data-val="4">4</div>
-          <div class="sev-btn" data-val="5">5</div>
+          <div class="sev-btn" data-val="0">None</div>
+          <div class="sev-btn" data-val="1">Mild</div>
+          <div class="sev-btn" data-val="2">Moderate</div>
+          <div class="sev-btn" data-val="3">Severe</div>
         </div>
       </div>
 
@@ -430,20 +420,12 @@ canvas,svg,img{max-width:100%;}
 
       <div class="section-label">Inhaler use</div>
 
-      <div class="row">
-        <div class="field">
-          <label>Inhaler — scheduled dose taken?</label>
-          <div class="check-row">
-            <div class="check-item"><input type="checkbox" id="f-scheduled"> <span>Yes</span></div>
-          </div>
-        </div>
-        <div class="field">
-          <label>Inhaler — extra (rescue) puffs</label>
-          <div class="count-input">
-            <button type="button" id="rescue-minus">–</button>
-            <span id="rescue-count">0</span>
-            <button type="button" id="rescue-plus">+</button>
-          </div>
+      <div class="field">
+        <label>Inhaler puffs</label>
+        <div class="count-input">
+          <button type="button" id="puffs-minus">–</button>
+          <span id="puffs-count">2</span>
+          <button type="button" id="puffs-plus">+</button>
         </div>
       </div>
 
@@ -551,13 +533,13 @@ canvas,svg,img{max-width:100%;}
     <div class="stats-row">
       <div class="stat"><div class="n" id="stat-7">–</div><div class="l">Symptom days / 7</div></div>
       <div class="stat"><div class="n" id="stat-14">–</div><div class="l">Symptom days / 14</div></div>
-      <div class="stat"><div class="n" id="stat-rescue">–</div><div class="l">Rescue puffs / 7d</div></div>
+      <div class="stat"><div class="n" id="stat-puffs">–</div><div class="l">Inhaler puffs / 7d</div></div>
       <div class="stat"><div class="n" id="stat-avgsev">–</div><div class="l">Avg severity / 7d</div></div>
     </div>
     <div class="chart-wrap">
-      <div class="chart-title">Rescue inhaler puffs per day</div>
+      <div class="chart-title">Inhaler puffs per day</div>
       <div class="chart-box">
-        <canvas id="rescueChart"></canvas>
+        <canvas id="puffsChart"></canvas>
       </div>
     </div>
 
@@ -571,13 +553,11 @@ canvas,svg,img{max-width:100%;}
       </div>
       <div class="heat-legend">
         <span>No entry</span><span class="heat-cell no-entry"></span>
-        <span>0</span>
+        <span>None</span>
         <span class="heat-cell" data-sev style="--sev-pct:12%;"></span>
-        <span class="heat-cell" data-sev style="--sev-pct:29.6%;"></span>
-        <span class="heat-cell" data-sev style="--sev-pct:47.2%;"></span>
-        <span class="heat-cell" data-sev style="--sev-pct:64.8%;"></span>
-        <span class="heat-cell" data-sev style="--sev-pct:82.4%;"></span>
-        <span class="heat-cell" data-sev style="--sev-pct:100%;"></span><span>5</span>
+        <span class="heat-cell" data-sev style="--sev-pct:41.3%;"></span>
+        <span class="heat-cell" data-sev style="--sev-pct:70.7%;"></span>
+        <span class="heat-cell" data-sev style="--sev-pct:100%;"></span><span>Severe</span>
       </div>
       <div class="heat-tooltip" id="heatTooltip"></div>
     </div>
@@ -628,14 +608,28 @@ let selectedWheeze = null;
 let selectedCough = null;
 let selectedChest = null;
 let selectedShortness = null;
-let rescueCount = 0;
+// Defaults to 2 rather than 0: on the days this actually gets logged, 2
+// puffs is the typical dose, so the common case needs no taps.
+let puffsCount = 2;
 let trendChartInstance = null;
-let rescueChartInstance = null;
+let puffsChartInstance = null;
 let settingChartInstance = null;
 const scatterInstances = {};
 let editingEntryId = null;
 
 const THEME_KEY = 'wheezer-theme';
+
+// Symptom severity is a 4-point None/Mild/Moderate/Severe scale (stored as
+// 0-3). Entries logged before this scale existed may still carry a value up
+// to 5 from the old 0-5 range - those fall back to showing the raw number
+// rather than a made-up label, and charts clamp them to the Severe end
+// rather than clipping them off the scale entirely.
+const SEVERITY_MAX = 3;
+const SEVERITY_LABELS = ['None', 'Mild', 'Moderate', 'Severe'];
+function severityLabel(v){
+  if(v === null || v === undefined || v === '') return '';
+  return SEVERITY_LABELS[v] ?? String(v);
+}
 
 function isDarkMode(){
   const stored = document.documentElement.dataset.theme;
@@ -655,7 +649,6 @@ function chartPalette(){
     chest: '#B98BD1',
     shortness: '#6BA8E0',
     phlegm: '#8FCF7A',
-    scheduled: '#C9B26B',
     aqi: '#A8BDB8',
     aqiFill: 'rgba(168,189,184,0.18)'
   } : {
@@ -668,7 +661,6 @@ function chartPalette(){
     chest: '#8B5FA3',
     shortness: '#2F6FA8',
     phlegm: '#4E8B3C',
-    scheduled: '#8A7320',
     aqi: '#8FA3A0',
     aqiFill: 'rgba(143,163,160,0.15)'
   };
@@ -681,7 +673,7 @@ function updateThemeToggleLabel(){
 
 function renderAllCharts(){
   renderChart();
-  renderRescueChart();
+  renderPuffsChart();
   renderHeatmap();
   renderTriggerScatter('sevAqiChart', 'aqi', 'AQI', chartPalette().shortness);
   renderTriggerScatter('sevPollenChart', 'pollenIndex', 'Pollen index', chartPalette().chest);
@@ -856,12 +848,12 @@ wireSymptomToggle('f-cough', 'sev-cough', ()=>selectedCough=null);
 wireSymptomToggle('f-chest', 'sev-chest', ()=>selectedChest=null);
 wireSymptomToggle('f-shortness', 'sev-shortness', ()=>selectedShortness=null);
 
-document.getElementById('rescue-plus').addEventListener('click',()=>{
-  rescueCount++; document.getElementById('rescue-count').textContent = rescueCount;
+document.getElementById('puffs-plus').addEventListener('click',()=>{
+  puffsCount++; document.getElementById('puffs-count').textContent = puffsCount;
 });
-document.getElementById('rescue-minus').addEventListener('click',()=>{
-  rescueCount = Math.max(0, rescueCount-1);
-  document.getElementById('rescue-count').textContent = rescueCount;
+document.getElementById('puffs-minus').addEventListener('click',()=>{
+  puffsCount = Math.max(0, puffsCount-1);
+  document.getElementById('puffs-count').textContent = puffsCount;
 });
 
 function resetEntryForm(){
@@ -874,7 +866,6 @@ function resetEntryForm(){
   document.getElementById('sev-cough-wrap').style.display = 'none';
   document.getElementById('sev-chest-wrap').style.display = 'none';
   document.getElementById('sev-shortness-wrap').style.display = 'none';
-  document.getElementById('f-scheduled').checked = false;
   document.getElementById('f-aqi').value='';
   document.getElementById('f-aqi-peak').value='';
   document.getElementById('f-pollen-level').value='';
@@ -888,8 +879,8 @@ function resetEntryForm(){
   document.getElementById('f-dinner').value='';
   document.getElementById('f-snacks').value='';
   document.getElementById('f-notes').value='';
-  rescueCount = 0;
-  document.getElementById('rescue-count').textContent = 0;
+  puffsCount = 2;
+  document.getElementById('puffs-count').textContent = 2;
   selectedWheeze = null; selectedCough = null; selectedChest = null; selectedShortness = null;
   document.querySelectorAll('.sev-btn').forEach(x=>x.classList.remove('selected'));
   const now2 = new Date();
@@ -924,8 +915,7 @@ document.getElementById('save-btn').addEventListener('click', async ()=>{
     shortness: document.getElementById('f-shortness').checked,
     shortnessSeverity: selectedShortness,
     phlegm: document.getElementById('f-phlegm').checked,
-    scheduled: document.getElementById('f-scheduled').checked,
-    rescuePuffs: rescueCount,
+    inhalerPuffs: puffsCount,
     aqi: document.getElementById('f-aqi').value,
     aqiPeak: document.getElementById('f-aqi-peak').value,
     pollenLevel: document.getElementById('f-pollen-level').value,
@@ -997,17 +987,25 @@ function maxSeverity(e){
   return Math.max(e.wheezeSeverity||0, e.coughSeverity||0, e.chestSeverity||0, e.shortnessSeverity||0);
 }
 
+// Entries saved before the single inhaler-puffs field existed only have the
+// older scheduled-dose/rescue-puffs split; treat rescuePuffs as the puff
+// count for those rather than losing them.
+function puffsOf(e){
+  const v = e.inhalerPuffs !== undefined ? e.inhalerPuffs : e.rescuePuffs;
+  return parseInt(v) || 0;
+}
+
 function renderHistory(){
   const symptom7 = new Set(entries.filter(e=>hasAnySymptom(e) && withinDays(e.date,7)).map(e=>e.date)).size;
   const symptom14 = new Set(entries.filter(e=>hasAnySymptom(e) && withinDays(e.date,14)).map(e=>e.date)).size;
-  const rescue7 = entries.filter(e=>withinDays(e.date,7)).reduce((s,e)=>s+(parseInt(e.rescuePuffs)||0),0);
+  const puffs7 = entries.filter(e=>withinDays(e.date,7)).reduce((s,e)=>s+puffsOf(e),0);
   const recent7 = entries.filter(e=>withinDays(e.date,7));
   const avgSev7 = recent7.length
     ? (recent7.reduce((s,e)=>s+maxSeverity(e),0) / recent7.length).toFixed(1)
     : '–';
   document.getElementById('stat-7').textContent = symptom7;
   document.getElementById('stat-14').textContent = symptom14;
-  document.getElementById('stat-rescue').textContent = rescue7;
+  document.getElementById('stat-puffs').textContent = puffs7;
   document.getElementById('stat-avgsev').textContent = avgSev7;
 
   renderAllCharts();
@@ -1021,15 +1019,14 @@ function renderHistory(){
   // has to be escaped — not just the free-text meal/notes fields.
   list.innerHTML = entries.map(e=>{
     const esc = escapeHtml;
-    const sev = v => v != null ? esc(v) : '';
+    const sev = v => v != null ? esc(severityLabel(v)) : '';
     const tags = [];
     if(e.wheeze) tags.push(`<span class="tag wheeze">wheeze ${sev(e.wheezeSeverity)}</span>`);
     if(e.cough || e.coughSeverity) tags.push(`<span class="tag">cough ${sev(e.coughSeverity)}</span>`);
     if(e.chest || e.chestSeverity) tags.push(`<span class="tag">chest tightness ${sev(e.chestSeverity)}</span>`);
     if(e.shortness) tags.push(`<span class="tag wheeze">shortness of breath ${sev(e.shortnessSeverity)}</span>`);
     if(e.phlegm) tags.push(`<span class="tag">phlegm / mucus</span>`);
-    if(e.scheduled) tags.push(`<span class="tag">scheduled dose</span>`);
-    if(e.rescuePuffs>0) tags.push(`<span class="tag">${esc(e.rescuePuffs)} rescue puff${e.rescuePuffs>1?'s':''}</span>`);
+    if(puffsOf(e)>0) tags.push(`<span class="tag">${esc(puffsOf(e))} inhaler puff${puffsOf(e)>1?'s':''}</span>`);
     if(e.aqi) tags.push(`<span class="tag">AQI ${esc(e.aqi)}</span>`);
     if(e.aqiPeak) tags.push(`<span class="tag">peak AQI ${esc(e.aqiPeak)}</span>`);
     if(e.pollenLevel) tags.push(`<span class="tag">pollen: ${esc(e.pollenLevel)}</span>`);
@@ -1070,7 +1067,8 @@ document.getElementById('entryList').addEventListener('click', (ev) => {
   else if (btn.dataset.action === 'delete') deleteEntry(id);
 });
 
-const YES_NO_SERIES = new Set(['Phlegm (present)', 'Scheduled dose taken']);
+const YES_NO_SERIES = new Set(['Phlegm (present)']);
+const SEVERITY_SERIES = new Set(['Wheeze', 'Cough', 'Chest tightness', 'Shortness of breath']);
 
 function renderChart(){
   const chartData = entries.slice(0, 20).reverse();
@@ -1091,11 +1089,9 @@ function renderChart(){
   const chestData = chartData.map(e => e.chestSeverity ?? null);
   const shortnessData = chartData.map(e => e.shortnessSeverity ?? null);
   const aqiData = chartData.map(e => e.aqi ? Number(e.aqi) : null);
-  // Phlegm and the scheduled inhaler dose are yes/no checkboxes, so "absent" is
-  // real information rather than a gap — plot them as stepped 0/1 lines instead
-  // of leaving nulls.
+  // Phlegm is a yes/no checkbox, so "absent" is real information rather than
+  // a gap — plot it as a stepped 0/1 line instead of leaving nulls.
   const phlegmData = chartData.map(e => e.phlegm ? 1 : 0);
-  const scheduledData = chartData.map(e => e.scheduled ? 1 : 0);
   const pal = chartPalette();
 
   trendChartInstance = new Chart(ctx, {
@@ -1153,16 +1149,6 @@ function renderChart(){
           pointRadius: 2
         },
         {
-          label: 'Scheduled dose taken',
-          data: scheduledData,
-          borderColor: pal.scheduled,
-          backgroundColor: pal.scheduled,
-          yAxisID: 'ySev',
-          stepped: true,
-          borderDash: [4,3],
-          pointRadius: 2
-        },
-        {
           label: 'AQI',
           data: aqiData,
           borderColor: pal.aqi,
@@ -1190,10 +1176,15 @@ function renderChart(){
           bodyFont: { family: 'Inter', size: 12 },
           callbacks: {
             // The two checkbox series are plotted as 0/1; show them as Yes/No.
+            // The four symptom series are plotted as 0-3; show the label
+            // instead of a bare number.
             label: (ctx) => {
               const v = ctx.parsed.y;
               if (YES_NO_SERIES.has(ctx.dataset.label)) {
                 return `${ctx.dataset.label}: ${v ? 'Yes' : 'No'}`;
+              }
+              if (SEVERITY_SERIES.has(ctx.dataset.label)) {
+                return `${ctx.dataset.label}: ${severityLabel(v)}`;
               }
               return `${ctx.dataset.label}: ${v}`;
             }
@@ -1209,10 +1200,10 @@ function renderChart(){
           type: 'linear',
           position: 'left',
           min: 0,
-          suggestedMax: 5,
+          suggestedMax: SEVERITY_MAX,
           ticks: { color: pal.textMuted, font: { family: 'Inter', size: 10 }, stepSize: 1 },
           grid: { color: pal.gridLine },
-          title: { display: true, text: 'Severity 0–5 · yes/no 0–1', color: pal.textMuted, font: { family: 'Inter', size: 11 } }
+          title: { display: true, text: 'Severity 0–3 · yes/no 0–1', color: pal.textMuted, font: { family: 'Inter', size: 11 } }
         },
         yAqi: {
           type: 'linear',
@@ -1233,28 +1224,28 @@ function hexToRgba(hex, alpha){
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
-function aggregateRescueByDay(){
+function aggregatePuffsByDay(){
   const map = new Map();
   entries.forEach(e=>{
     if(!e.date) return;
-    map.set(e.date, (map.get(e.date)||0) + (parseInt(e.rescuePuffs)||0));
+    map.set(e.date, (map.get(e.date)||0) + puffsOf(e));
   });
   return [...map.entries()].sort((a,b)=> a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
 }
 
-function renderRescueChart(){
-  const ctx = document.getElementById('rescueChart');
-  if(rescueChartInstance){ rescueChartInstance.destroy(); rescueChartInstance = null; }
-  const daily = aggregateRescueByDay().slice(-30);
+function renderPuffsChart(){
+  const ctx = document.getElementById('puffsChart');
+  if(puffsChartInstance){ puffsChartInstance.destroy(); puffsChartInstance = null; }
+  const daily = aggregatePuffsByDay().slice(-30);
   if(!daily.length) return;
   const pal = chartPalette();
 
-  rescueChartInstance = new Chart(ctx, {
+  puffsChartInstance = new Chart(ctx, {
     type: 'bar',
     data: {
       labels: daily.map(d=>d[0]),
       datasets: [{
-        label: 'Rescue puffs',
+        label: 'Inhaler puffs',
         data: daily.map(d=>d[1]),
         backgroundColor: pal.wheeze,
         borderRadius: 3,
@@ -1281,7 +1272,7 @@ function renderRescueChart(){
           beginAtZero: true,
           ticks: { color: pal.textMuted, font: { family: 'Inter', size: 10 }, stepSize: 1 },
           grid: { color: pal.gridLine },
-          title: { display: true, text: 'Rescue puffs', color: pal.textMuted, font: { family: 'Inter', size: 11 } }
+          title: { display: true, text: 'Inhaler puffs', color: pal.textMuted, font: { family: 'Inter', size: 11 } }
         }
       }
     }
@@ -1322,7 +1313,7 @@ function renderTriggerScatter(canvasId, field, xLabel, color){
           titleFont: { family: 'JetBrains Mono', size: 11 },
           bodyFont: { family: 'Inter', size: 12 },
           callbacks: {
-            label: (ctx) => `${xLabel} ${ctx.parsed.x} · severity ${ctx.parsed.y}`
+            label: (ctx) => `${xLabel} ${ctx.parsed.x} · severity ${severityLabel(ctx.parsed.y)}`
           }
         }
       },
@@ -1333,10 +1324,10 @@ function renderTriggerScatter(canvasId, field, xLabel, color){
           grid: { color: pal.gridLine }
         },
         y: {
-          title: { display: true, text: 'Max severity (0–5)', color: pal.textMuted, font: { family: 'Inter', size: 11 } },
+          title: { display: true, text: 'Max severity', color: pal.textMuted, font: { family: 'Inter', size: 11 } },
           min: 0,
-          max: 5,
-          ticks: { color: pal.textMuted, font: { family: 'Inter', size: 10 }, stepSize: 1 },
+          suggestedMax: SEVERITY_MAX,
+          ticks: { color: pal.textMuted, font: { family: 'Inter', size: 10 }, stepSize: 1, callback: severityLabel },
           grid: { color: pal.gridLine }
         }
       }
@@ -1401,10 +1392,10 @@ function renderSettingChart(){
         },
         y: {
           min: 0,
-          max: 5,
+          suggestedMax: SEVERITY_MAX,
           ticks: { color: pal.textMuted, font: { family: 'Inter', size: 10 }, stepSize: 1 },
           grid: { color: pal.gridLine },
-          title: { display: true, text: 'Avg max severity (0–5)', color: pal.textMuted, font: { family: 'Inter', size: 11 } }
+          title: { display: true, text: 'Avg max severity', color: pal.textMuted, font: { family: 'Inter', size: 11 } }
         }
       }
     }
@@ -1500,12 +1491,16 @@ function renderHeatmap(){
         const dateLabel = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         if(rec){
           cell.dataset.sev = String(rec.sev);
-          cell.style.setProperty('--sev-pct', (12 + rec.sev * 17.6) + '%');
+          // Clamp the color to the Severe end for any pre-4-point-scale entry
+          // that still carries a value above SEVERITY_MAX; the raw number
+          // stays intact in the tooltip below.
+          const cappedSev = Math.min(rec.sev, SEVERITY_MAX);
+          cell.style.setProperty('--sev-pct', (12 + cappedSev * (88 / SEVERITY_MAX)) + '%');
         } else {
           cell.classList.add('no-entry');
         }
         const tooltipLabel = rec
-          ? `${dateLabel} — max severity ${rec.sev}, ${rec.count} entr${rec.count===1?'y':'ies'}`
+          ? `${dateLabel} — max severity ${severityLabel(rec.sev)}, ${rec.count} entr${rec.count===1?'y':'ies'}`
           : `${dateLabel} — no entry`;
         cell.addEventListener('mouseenter', ev => showHeatTooltip(ev, tooltipLabel));
         cell.addEventListener('mousemove', ev => showHeatTooltip(ev, tooltipLabel));
@@ -1561,7 +1556,6 @@ function editEntry(id){
   document.getElementById('f-shortness').checked = !!entry.shortness;
   document.getElementById('sev-shortness-wrap').style.display = entry.shortness ? 'block' : 'none';
   document.getElementById('f-phlegm').checked = !!entry.phlegm;
-  document.getElementById('f-scheduled').checked = !!entry.scheduled;
   document.getElementById('f-aqi').value = entry.aqi ?? '';
   document.getElementById('f-aqi-peak').value = entry.aqiPeak ?? '';
   document.getElementById('f-pollen-level').value = entry.pollenLevel ?? '';
@@ -1576,8 +1570,8 @@ function editEntry(id){
   document.getElementById('f-snacks').value = entry.snacks || '';
   document.getElementById('f-notes').value = entry.notes || '';
 
-  rescueCount = Number(entry.rescuePuffs) || 0;
-  document.getElementById('rescue-count').textContent = rescueCount;
+  puffsCount = puffsOf(entry);
+  document.getElementById('puffs-count').textContent = puffsCount;
 
   selectedWheeze = entry.wheezeSeverity ?? null;
   selectedCough = entry.coughSeverity ?? null;
