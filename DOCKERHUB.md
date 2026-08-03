@@ -13,7 +13,7 @@ mkdir wheezer && cd wheezer
 curl -O https://raw.githubusercontent.com/amar-r/wheezer/main/compose.yaml
 curl -O https://raw.githubusercontent.com/amar-r/wheezer/main/.env.example
 cp .env.example .env
-# edit .env, set GOOGLE_MAPS_API_KEY (optional — see below)
+# edit .env, set GOOGLE_MAPS_API_KEY (optional, see below)
 docker compose up -d
 ```
 
