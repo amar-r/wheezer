@@ -3,6 +3,14 @@
 Versions follow semver. The git tag is what makes a release; see
 [README](README.md#versioning-and-releases).
 
+## Unreleased
+
+### Added
+
+- A **Severity vs humidity** scatter on the History & Trends tab, below the AQI
+  and pollen pair. Humidity was already recorded on every weather lookup and
+  editable by hand on every entry, but nothing plotted it against severity.
+
 ## 1.3.0
 
 Environment lookups move from zip codes to address search. The API key now

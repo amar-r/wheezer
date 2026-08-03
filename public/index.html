@@ -596,6 +596,13 @@ canvas,svg,img{max-width:100%;}
     </div>
 
     <div class="chart-wrap">
+      <div class="chart-title">Severity vs humidity</div>
+      <div class="chart-box chart-box-sm">
+        <canvas id="sevHumidityChart"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-wrap">
       <div class="chart-title">Avg severity by setting</div>
       <div class="chart-box">
         <canvas id="settingChart"></canvas>
@@ -702,6 +709,7 @@ function renderAllCharts(){
   renderHeatmap();
   renderTriggerScatter('sevAqiChart', 'aqi', 'AQI', chartPalette().shortness);
   renderTriggerScatter('sevPollenChart', 'pollenIndex', 'Pollen index', chartPalette().chest);
+  renderTriggerScatter('sevHumidityChart', 'humidity', 'Humidity', chartPalette().phlegm, '%');
   renderSettingChart();
 }
 
@@ -1461,7 +1469,9 @@ function renderPuffsChart(){
   });
 }
 
-function renderTriggerScatter(canvasId, field, xLabel, color){
+// `xLabel` is the bare quantity name; `unit` (if given) is appended to values in
+// the tooltip and parenthesised in the axis title.
+function renderTriggerScatter(canvasId, field, xLabel, color, unit = ''){
   const ctx = document.getElementById(canvasId);
   if(scatterInstances[canvasId]){ scatterInstances[canvasId].destroy(); scatterInstances[canvasId] = null; }
 
@@ -1495,13 +1505,13 @@ function renderTriggerScatter(canvasId, field, xLabel, color){
           titleFont: { family: 'JetBrains Mono', size: 11 },
           bodyFont: { family: 'Inter', size: 12 },
           callbacks: {
-            label: (ctx) => `${xLabel} ${ctx.parsed.x} · severity ${severityLabel(ctx.parsed.y)}`
+            label: (ctx) => `${xLabel} ${ctx.parsed.x}${unit} · severity ${severityLabel(ctx.parsed.y)}`
           }
         }
       },
       scales: {
         x: {
-          title: { display: true, text: xLabel, color: pal.textMuted, font: { family: 'Inter', size: 11 } },
+          title: { display: true, text: unit ? `${xLabel} (${unit})` : xLabel, color: pal.textMuted, font: { family: 'Inter', size: 11 } },
           ticks: { color: pal.textMuted, font: { family: 'Inter', size: 10 } },
           grid: { color: pal.gridLine }
         },
