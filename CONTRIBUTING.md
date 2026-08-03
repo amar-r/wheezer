@@ -63,8 +63,10 @@ through `escapeHtml()`. Anything written to `data/entries.json` goes
 through the temp file and rename in `writeEntries()`, so a crash halfway
 can't truncate the real file.
 
-There's no auth, on purpose. If you need it, put the app behind
-Cloudflare Access or a reverse proxy rather than adding a login screen.
+There's no auth, on purpose. The app expects to sit on a trusted network
+and be reached over a VPN from outside it. If you need more than that,
+put an authenticating proxy in front rather than adding a login screen
+here.
 
 ## How changes get merged
 

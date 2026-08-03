@@ -58,10 +58,12 @@ simplest path:
    keeps it isolated), or paste the `wheezer` service block from this
    `compose.yaml` directly into your main `docker-compose.yml` so it starts/
    stops with everything else.
-3. If you're running Cloudflare Tunnel (or similar) for access to your other
-   self-hosted services, add a route for `wheezer` (port 8420) the same way
-   you did for the others. That gets you access from outside your home
-   network too.
+3. If you route your other services out through a tunnel or reverse proxy,
+   don't reflexively add `wheezer` to it. There is no auth in front of these
+   entries, so anything that puts port 8420 on the public internet needs an
+   authenticating layer added with it. Reaching the app over a VPN into your
+   own network sidesteps that, and is the access model the rest of this
+   README assumes.
 
 ## Editing and exporting entries
 
@@ -135,9 +137,12 @@ number inputs, so you can always type over the fetched value.
 
 ## Notes
 
-- No auth built in: if you expose this outside your LAN (e.g. via
-  Cloudflare Tunnel), put it behind Cloudflare Access or similar, since it's
-  health data.
+- No auth built in, deliberately. Anyone who can reach port 8420 can read
+  and edit every entry, so the app expects to sit on a network you trust:
+  your LAN, plus whatever VPN you already use to get back to it (WireGuard,
+  Tailscale, or whatever your router supports). Publishing it to the public
+  internet means putting an authenticating proxy in front of it first. This
+  is health data.
 - Storage is a flat JSON file, fine for personal single-user logging volume.
   If it ever needs multi-user support or heavier querying, swap `server.js`'s
   file read/write for SQLite: the API surface (`GET/POST/PUT/DELETE

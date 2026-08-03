@@ -41,5 +41,6 @@ Images are built for `linux/amd64` and `linux/arm64`.
 
 No auth built in and no telemetry. Entries are stored as a flat JSON file
 in the mounted data directory. Back it up like any other self-hosted app
-data. If you expose this outside your LAN, put it behind an auth proxy
-(e.g. Cloudflare Access), since it's health data.
+data. Anyone who can reach port 8420 can read every entry, so reach it
+over a VPN rather than publishing it. Putting it on the public internet
+means putting an authenticating proxy in front of it. This is health data.
