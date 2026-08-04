@@ -582,13 +582,13 @@ canvas,svg,img{max-width:100%;}
 
     <div class="chart-row">
       <div class="chart-wrap">
-        <div class="chart-title">Severity vs AQI</div>
+        <div class="chart-title">AQI vs severity</div>
         <div class="chart-box chart-box-sm">
           <canvas id="sevAqiChart"></canvas>
         </div>
       </div>
       <div class="chart-wrap">
-        <div class="chart-title">Severity vs pollen index</div>
+        <div class="chart-title">Pollen index vs severity</div>
         <div class="chart-box chart-box-sm">
           <canvas id="sevPollenChart"></canvas>
         </div>
@@ -596,7 +596,7 @@ canvas,svg,img{max-width:100%;}
     </div>
 
     <div class="chart-wrap">
-      <div class="chart-title">Severity vs humidity</div>
+      <div class="chart-title">Humidity vs severity</div>
       <div class="chart-box chart-box-sm">
         <canvas id="sevHumidityChart"></canvas>
       </div>
@@ -1469,15 +1469,16 @@ function renderPuffsChart(){
   });
 }
 
-// `xLabel` is the bare quantity name; `unit` (if given) is appended to values in
-// the tooltip and parenthesised in the axis title.
-function renderTriggerScatter(canvasId, field, xLabel, color, unit = ''){
+// `triggerLabel` is the bare quantity name; `unit` (if given) is appended to
+// values in the tooltip and parenthesised in the axis title. Severity is the
+// x axis on every chart here, so the trigger is what goes up the y axis.
+function renderTriggerScatter(canvasId, field, triggerLabel, color, unit = ''){
   const ctx = document.getElementById(canvasId);
   if(scatterInstances[canvasId]){ scatterInstances[canvasId].destroy(); scatterInstances[canvasId] = null; }
 
   const points = entries
     .filter(e => e[field] !== undefined && e[field] !== null && e[field] !== '' && !Number.isNaN(Number(e[field])))
-    .map(e => ({ x: Number(e[field]), y: maxSeverity(e) }));
+    .map(e => ({ x: maxSeverity(e), y: Number(e[field]) }));
   if(!points.length) return;
 
   const pal = chartPalette();
@@ -1505,21 +1506,21 @@ function renderTriggerScatter(canvasId, field, xLabel, color, unit = ''){
           titleFont: { family: 'JetBrains Mono', size: 11 },
           bodyFont: { family: 'Inter', size: 12 },
           callbacks: {
-            label: (ctx) => `${xLabel} ${ctx.parsed.x}${unit} · severity ${severityLabel(ctx.parsed.y)}`
+            label: (ctx) => `${triggerLabel} ${ctx.parsed.y}${unit} · severity ${severityLabel(ctx.parsed.x)}`
           }
         }
       },
       scales: {
         x: {
-          title: { display: true, text: unit ? `${xLabel} (${unit})` : xLabel, color: pal.textMuted, font: { family: 'Inter', size: 11 } },
-          ticks: { color: pal.textMuted, font: { family: 'Inter', size: 10 } },
-          grid: { color: pal.gridLine }
-        },
-        y: {
           title: { display: true, text: 'Max severity', color: pal.textMuted, font: { family: 'Inter', size: 11 } },
           min: 0,
           suggestedMax: SEVERITY_MAX,
           ticks: { color: pal.textMuted, font: { family: 'Inter', size: 10 }, stepSize: 1, callback: severityLabel },
+          grid: { color: pal.gridLine }
+        },
+        y: {
+          title: { display: true, text: unit ? `${triggerLabel} (${unit})` : triggerLabel, color: pal.textMuted, font: { family: 'Inter', size: 11 } },
+          ticks: { color: pal.textMuted, font: { family: 'Inter', size: 10 } },
           grid: { color: pal.gridLine }
         }
       }
@@ -1563,6 +1564,10 @@ function renderSettingChart(){
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      // Severity runs along the bottom, so the bars are horizontal and the
+      // setting names stack down the left edge — which also stops the longer
+      // ones being rotated to fit.
+      indexAxis: 'y',
       plugins: {
         legend: { display: false },
         tooltip: {
@@ -1579,15 +1584,15 @@ function renderSettingChart(){
       },
       scales: {
         x: {
-          ticks: { color: pal.textMuted, font: { family: 'Inter', size: 10 }, maxRotation: 30, minRotation: 0 },
-          grid: { display: false }
-        },
-        y: {
           min: 0,
           suggestedMax: SEVERITY_MAX,
           ticks: { color: pal.textMuted, font: { family: 'Inter', size: 10 }, stepSize: 1 },
           grid: { color: pal.gridLine },
           title: { display: true, text: 'Avg max severity', color: pal.textMuted, font: { family: 'Inter', size: 11 } }
+        },
+        y: {
+          ticks: { color: pal.textMuted, font: { family: 'Inter', size: 10 } },
+          grid: { display: false }
         }
       }
     }

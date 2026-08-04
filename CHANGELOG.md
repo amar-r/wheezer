@@ -11,6 +11,18 @@ Versions follow semver. The git tag is what makes a release; see
   and pollen pair. Humidity was already recorded on every weather lookup and
   editable by hand on every entry, but nothing plotted it against severity.
 
+### Changed
+
+- Severity now runs along the bottom of every chart that plots it, rather than
+  up the side on some and along the bottom on others. The three trigger
+  scatters put severity on the x axis with the trigger on the y, and the
+  per-setting bars are horizontal. Reading whether a bad day lines up with high
+  pollen meant re-orienting between charts that were each drawn a different way
+  around. The setting names also stopped being rotated to fit, since they now
+  stack down the left edge. Chart titles follow the axes: **AQI vs severity**
+  rather than **Severity vs AQI**. The last-20-entries trend line keeps time on
+  the x axis — it is a time series and shares that axis with AQI.
+
 ## 1.3.0
 
 Environment lookups move from zip codes to address search. The API key now
