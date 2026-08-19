@@ -34,14 +34,25 @@ Two files hold essentially all of it:
   `readEntries()`/`writeEntries()` against one JSON array. The README notes the
   API surface is deliberately shaped so this could become SQLite without the
   frontend noticing.
-- **`public/index.html`** — ~1600 lines, all CSS and JS inline. Two tabs (New
-  Entry, History & Trends), six Chart.js charts, theme toggle with a
-  light/dark palette resolved at render time in `chartPalette()`. Charts are
-  destroyed and rebuilt on theme change rather than restyled.
+- **`public/index.html`** — ~2100 lines, all CSS and JS inline. Three
+  destinations (Today, Log, Trends) swapped by `showDest()`, which toggles
+  `.dest.active` and drives the tab bar — fixed to the bottom on a phone, a
+  segmented control above 640px. Eight Chart.js charts plus a DOM heatmap, and
+  a theme toggle with a light/dark palette resolved at render time in
+  `chartPalette()`. Charts are destroyed and rebuilt on theme change rather
+  than restyled, and are only built while Trends is on screen — Chart.js sizes
+  a canvas as it constructs it, so one built inside a `display:none` section
+  collapses to zero and stays there.
+
+  The UI is built from grouped inset lists (`.list` / `.row`), CSS switches
+  over real checkboxes (`.switch`), and a segmented severity control
+  (`.severity` / `.sev-btn`). Everything the save/edit/fetch code touches is
+  addressed by `getElementById`, so those ids are the contract between markup
+  and logic — renaming one silently breaks saving.
 
 An entry is a flat object of ~25 short fields. `date` and `time` are stored as
 separate `YYYY-MM-DD` / `HH:mm` strings even though the form now uses a single
-`datetime-local` input, and the history list, CSV export and charts all read
+`datetime-local` input, and the entry list, CSV export and charts all read
 those two fields — split on save, rejoin on edit.
 
 The lookup endpoints fan out to Google Maps Platform (Air Quality, Weather,

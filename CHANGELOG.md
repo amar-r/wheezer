@@ -5,23 +5,64 @@ Versions follow semver. The git tag is what makes a release; see
 
 ## Unreleased
 
-### Added
-
-- A **Severity vs humidity** scatter on the History & Trends tab, below the AQI
-  and pollen pair. Humidity was already recorded on every weather lookup and
-  editable by hand on every entry, but nothing plotted it against severity.
-
 ### Changed
 
-- Severity now runs along the bottom of every chart that plots it, rather than
-  up the side on some and along the bottom on others. The three trigger
-  scatters put severity on the x axis with the trigger on the y, and the
-  per-setting bars are horizontal. Reading whether a bad day lines up with high
-  pollen meant re-orienting between charts that were each drawn a different way
-  around. The setting names also stopped being rotated to fit, since they now
-  stack down the left edge. Chart titles follow the axes: **AQI vs severity**
-  rather than **Severity vs AQI**. The last-20-entries trend line keeps time on
-  the x axis — it is a time series and shares that axis with AQI.
+- **The interface has been rebuilt from scratch.** The old two-tab layout grew
+  a section at a time and was never revisited: on a phone the entry form ran to
+  1660px — two full screens, twenty inputs — with **Save 1830px down the page**,
+  and the six environment fields that one tap of *Fetch conditions* fills took
+  up more room than anything else. Meanwhile the History tab was doing two
+  unrelated jobs in one scroll: browsing the record and studying the trends.
+
+  It is now three destinations — **Today**, **Log** and **Trends** — reached
+  from a tab bar that sits at the bottom of the screen on a phone, where your
+  thumb is, and becomes a segmented control on a wider screen. Today answers
+  "how am I doing" without scrolling: days since a symptom, what the last entry
+  said, and the recent record. Log is the entry form. Trends is the charts.
+
+  The look is rebuilt to match: grouped inset lists, real switches for the
+  symptom toggles, a segmented control for severity, and a palette that carries
+  its own light and dark values rather than leaning on the browser's. Save is
+  docked above the tab bar on the Log screen, so it is in reach from the first
+  screenful however far the form runs. What prompted all of it: **12 of the last
+  31 entries were logged before noon and 6 of those between 4 and 8am**, so this
+  is an app used half-asleep, one-handed, in the dark.
+
+  Nothing about the data changed. Same fields, same JSON on disk, same API.
+
+- Dates on the record read as **Today**, **Yesterday** or *Tue, Aug 18* instead
+  of a raw ISO date. The stored value is untouched — this is display only.
+
+### Added
+
+- A **Severity by time of day** chart, grouping entries into four-hour windows.
+  Nothing else on the page could show this: the heatmap and the puffs chart both
+  key on the date, so a 4am entry and a 10pm entry on the same day collapsed
+  into one cell no matter how differently they went. Overnight and early-morning
+  symptoms are a well-known asthma pattern and were invisible here.
+- A **Which symptoms show up** chart counting how often each symptom is
+  recorded. The trend line already plots all five series together, but at a
+  month's scale the rare ones are lost in the tangle; a flat count shows which
+  ones are actually driving the log and which are barely appearing.
+- **Days since a symptom** is now the headline of the Today screen. It counts
+  from the last symptomatic date rather than the last entry, so a symptom-free
+  run keeps climbing on days nothing was logged.
+- A **Severity vs humidity** scatter on the Trends screen, below the AQI and
+  pollen pair. Humidity was already recorded on every weather lookup and
+  editable by hand on every entry, but nothing plotted it against severity.
+
+### Fixed
+
+- The trigger scatters now say how many entries they rest on, and say so plainly
+  when a reading barely moved. Pollen sat on an index of 1-2 for a month
+  straight, and a scatter drew that as two neat stripes that looked like a
+  finding; it now notes that there is not enough spread to read a relationship.
+  The same note reports the sample size on the AQI and humidity charts, which do
+  have spread. Bars on the time-of-day chart backed by fewer than three entries
+  are drawn faded for the same reason — a single bad night should not read as a
+  pattern.
+- Saving an entry used to refresh the list only as a side effect of switching
+  tabs. It now reloads explicitly, so a saved entry can't fail to appear.
 
 ## 1.3.0
 

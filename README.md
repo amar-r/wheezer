@@ -67,8 +67,8 @@ simplest path:
 
 ## Editing and exporting entries
 
-Each entry in the History tab has an **Edit** link that loads it back into
-the entry form for changes. Saving updates the existing record instead of
+Each entry on the Today screen has an **Edit** link that loads it back into
+the Log form for changes. Saving updates the existing record instead of
 creating a new one (a **Cancel edit** link appears while editing, in case
 you want to back out).
 

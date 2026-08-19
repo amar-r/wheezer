@@ -2,7 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- viewport-fit=cover is what makes env(safe-area-inset-*) report anything
+     other than zero, which the fixed tab bar needs to clear the iPhone home
+     indicator. -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#F2F3F5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0B1211" media="(prefers-color-scheme: dark)">
 <title>Wheezer</title>
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -15,552 +20,624 @@
 <script src="vendor/chart.umd.min.js"></script>
 <link rel="stylesheet" href="vendor/fonts.css">
 <style>
+/* ---------------------------------------------------------------------------
+   Tokens. Light lives on bare :root so a page with no theme preference and no
+   stored choice still has a full palette; the dark block is guarded against an
+   explicit light choice, and repeated under [data-theme="dark"] so the toggle
+   wins in both directions.
+   --------------------------------------------------------------------------- */
 :root{
-  color-scheme: light dark;
-  --paper:#F3F5F4;
-  --paper-2:#EAEDEB;
-  --ink:#1B2B2B;
-  --ink-soft:#5C6D6A;
-  --teal:#1D4E4E;
-  --teal-soft:#3F6E6C;
-  --sage:#7C948C;
+  color-scheme:light dark;
+  --bg:#F2F3F5;
+  --group:#FFFFFF;
+  --group-2:#F7F8F9;
+  --separator:#D8DCDE;
+  --label:#14201F;
+  --label-2:#6B7A78;
+  --label-3:#9AA6A4;
+  --tint:#17635E;
+  --on-tint:#FFFFFF;
+  --tint-soft:#E3EDEB;
   --amber:#C7822F;
-  --amber-soft:#F0DCB8;
+  --amber-soft:#F5E6CC;
   --amber-text:#7A5219;
-  --line:#D6DBD8;
-  --white:#FCFCFB;
-  --error:#B0432C;
+  --danger:#B0432C;
+  --radius:12px;
+  --pad:16px;
 }
-@media (prefers-color-scheme: dark){
-  :root{
-    --paper:#14201F;
-    --paper-2:#1B2827;
-    --ink:#E7ECEA;
-    --ink-soft:#93A6A2;
-    --teal:#5CB3AC;
-    --teal-soft:#78C4BD;
-    --sage:#8FA39C;
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0B1211;
+    --group:#16211F;
+    --group-2:#1E2A28;
+    --separator:#2A3634;
+    --label:#E9EEEC;
+    --label-2:#9BABA8;
+    --label-3:#6E7C7A;
+    --tint:#5CB3AC;
+    --on-tint:#08100F;
+    --tint-soft:#16302E;
     --amber:#E3A75C;
     --amber-soft:#3A2C18;
     --amber-text:#E9C48C;
-    --line:#2B3B39;
-    --white:#1C2C2A;
-    --error:#E27A5F;
+    --danger:#E27A5F;
   }
 }
 :root[data-theme="dark"]{
-  color-scheme: dark;
-  --paper:#14201F;
-  --paper-2:#1B2827;
-  --ink:#E7ECEA;
-  --ink-soft:#93A6A2;
-  --teal:#5CB3AC;
-  --teal-soft:#78C4BD;
-  --sage:#8FA39C;
+  color-scheme:dark;
+  --bg:#0B1211;
+  --group:#16211F;
+  --group-2:#1E2A28;
+  --separator:#2A3634;
+  --label:#E9EEEC;
+  --label-2:#9BABA8;
+  --label-3:#6E7C7A;
+  --tint:#5CB3AC;
+  --on-tint:#08100F;
+  --tint-soft:#16302E;
   --amber:#E3A75C;
   --amber-soft:#3A2C18;
   --amber-text:#E9C48C;
-  --line:#2B3B39;
-  --white:#1C2C2A;
-  --error:#E27A5F;
+  --danger:#E27A5F;
 }
-:root[data-theme="light"]{
-  color-scheme: light;
-  --paper:#F3F5F4;
-  --paper-2:#EAEDEB;
-  --ink:#1B2B2B;
-  --ink-soft:#5C6D6A;
-  --teal:#1D4E4E;
-  --teal-soft:#3F6E6C;
-  --sage:#7C948C;
-  --amber:#C7822F;
-  --amber-soft:#F0DCB8;
-  --amber-text:#7A5219;
-  --line:#D6DBD8;
-  --white:#FCFCFB;
-  --error:#B0432C;
-}
+:root[data-theme="light"]{ color-scheme:light; }
+
 *{box-sizing:border-box;}
-body{transition:background-color 0.15s ease, color 0.15s ease;}
+html{-webkit-text-size-adjust:100%;}
 body{
   margin:0;
-  background:var(--paper);
-  color:var(--ink);
-  font-family:'Inter',sans-serif;
-  padding:0 0 60px;
+  background:var(--bg);
+  color:var(--label);
+  font-family:'Inter',system-ui,sans-serif;
+  font-size:16px;
+  line-height:1.45;
+  overflow-x:hidden;
+  /* clears the fixed tab bar, plus the home indicator on iPhone */
+  padding-bottom:calc(72px + env(safe-area-inset-bottom));
+  transition:background-color 0.15s ease,color 0.15s ease;
 }
-.wrap{max-width:760px;margin:0 auto;padding:0 24px;}
+canvas,svg,img{max-width:100%;}
+.wrap{max-width:760px;margin:0 auto;padding:0 var(--pad);}
 
-header{
-  padding:40px 24px 28px;
-  border-bottom:1px solid var(--line);
-  background:linear-gradient(180deg,var(--paper-2),var(--paper));
+/* --- app bar + large title ------------------------------------------------ */
+.appbar{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:12px;padding:14px var(--pad) 2px;max-width:760px;margin:0 auto;
 }
-header .inner{max-width:760px;margin:0 auto;}
-h1{
-  font-family:'Newsreader',serif;
-  font-weight:600;
-  font-size:2rem;
-  margin:0 0 4px;
-  color:var(--teal);
-  letter-spacing:-0.01em;
+.wordmark{
+  font-family:'Newsreader',serif;font-weight:600;font-size:1.05rem;
+  color:var(--tint);letter-spacing:0.01em;
 }
-.sub{
-  color:var(--ink-soft);
-  font-size:0.95rem;
-  margin:0 0 18px;
+.large-title{
+  font-weight:600;font-size:1.85rem;line-height:1.15;letter-spacing:-0.02em;
+  margin:4px 0 2px;
 }
-.wave{width:100%;height:44px;display:block;}
-.wave path{
-  fill:none;
-  stroke:var(--amber);
-  stroke-width:2;
-  stroke-linecap:round;
-  animation:breathe 5s ease-in-out infinite;
-  transform-origin:center;
-}
-@keyframes breathe{
-  0%,100%{stroke-width:2;opacity:0.55;}
-  50%{stroke-width:3;opacity:1;}
-}
-
-.tabs{display:flex;gap:4px;margin:28px 0 20px;border-bottom:1px solid var(--line);}
-.tab{
-  font-family:'Inter';font-weight:500;font-size:0.9rem;
-  padding:10px 4px;margin-right:20px;cursor:pointer;
-  color:var(--ink-soft);border-bottom:2px solid transparent;
-  background:none;border-top:none;border-left:none;border-right:none;
-}
-.tab.active{color:var(--teal);border-bottom-color:var(--amber);}
-
-.card{
-  background:var(--white);
-  border:1px solid var(--line);
-  border-radius:6px;
-  padding:24px;
-  margin-bottom:16px;
-}
-.field{margin-bottom:16px;}
-.section-label{
-  font-weight:700;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;
-  color:var(--teal);margin:28px 0 14px;padding-top:18px;border-top:1px solid var(--line);
-}
-label{
-  display:block;font-size:0.78rem;font-weight:600;
-  text-transform:uppercase;letter-spacing:0.04em;
-  color:var(--ink-soft);margin-bottom:6px;
-}
-input[type=text],input[type=datetime-local],input[type=number],textarea,select{
-  width:100%;padding:9px 10px;border:1px solid var(--line);
-  border-radius:4px;font-family:'Inter';font-size:0.92rem;
-  background:var(--paper);color:var(--ink);
-}
-/* date/time inputs render their native picker control at a slightly
-   different intrinsic height than plain text inputs on some engines
-   (notably Safari) even with identical padding — pin an explicit height
-   so any row of side-by-side inputs always lines up. */
-input[type=text],input[type=datetime-local],input[type=number],select{
-  height:42px;
-}
-/* iOS Safari gives date inputs an intrinsic content width and centers the
-   value when the field is wider than that, so this one control sat centered
-   while every other input in the form left-aligns. Resetting the native
-   appearance is what lets text-align apply. */
-input[type=datetime-local]{
-  -webkit-appearance:none;
-  appearance:none;
-  text-align:left;
-}
-textarea{min-height:56px;resize:vertical;}
-/* Labels in a paired row wrap to different numbers of lines (one-line "Pollen
-   level" beside a three-line "Pollen index"), which used to leave the two
-   inputs sitting at different heights. Aligning on the bottom edge keeps the
-   inputs level however the labels above them wrap. */
-.row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;}
-.row > .field{flex:1;min-width:140px;}
-/* An address needs far more room than the zip code this replaced, so give it a
-   wide enough minimum that it takes a line of its own on a phone rather than
-   sharing one with the fetch button. */
-.row > .field.address{min-width:230px;}
-.field.address{position:relative;}
-/* Anchored to the field and floating over what follows, so the form doesn't
-   jump around as suggestions appear and disappear under the cursor. */
-.suggestions{
-  position:absolute;top:100%;left:0;right:0;z-index:20;
-  margin-top:4px;background:var(--white);
-  border:1px solid var(--line);border-radius:4px;overflow:hidden;
-  box-shadow:0 6px 20px rgba(0,0,0,0.18);
-}
-.s-item{
-  padding:10px;cursor:pointer;font-size:0.9rem;
-  border-bottom:1px solid var(--line);
-}
-.s-item:last-child{border-bottom:none;}
-.s-item.active{background:var(--paper-2);}
-.s-main{display:block;color:var(--ink);}
-.s-sub{display:block;color:var(--ink-soft);font-size:0.8rem;margin-top:2px;}
-.severity{display:flex;gap:6px;}
-.sev-btn{
-  flex:1;padding:9px 4px;text-align:center;border:1px solid var(--line);
-  border-radius:4px;cursor:pointer;font-family:'Inter';font-weight:500;font-size:0.85rem;
-  background:var(--paper);color:var(--ink-soft);
-}
-.sev-btn.selected{background:var(--teal);color:var(--white);border-color:var(--teal);}
-.check-item{display:flex;align-items:center;gap:10px;font-size:0.95rem;}
-/* The symptom checkboxes carry their own text, so the uppercase label style
-   used elsewhere would be wrong here. Wrapping the input in the label makes
-   the whole row a tap target rather than just the 22px box. */
-label.check-item{
-  font-weight:400;text-transform:none;letter-spacing:0;
-  color:var(--ink);margin:0;cursor:pointer;min-height:44px;
-}
-.symptom .severity{margin:0 0 10px 30px;}
-.count-input{display:flex;align-items:center;gap:8px;}
-.count-input button{
-  width:44px;height:44px;border:1px solid var(--line);background:var(--paper);
-  border-radius:4px;cursor:pointer;font-size:1.25rem;color:var(--teal);
-}
-.count-input span{font-family:'JetBrains Mono';min-width:20px;text-align:center;}
-
-.btn-primary{
-  background:var(--teal);color:var(--white);border:none;
-  padding:11px 22px;border-radius:5px;font-weight:600;font-size:0.9rem;
-  cursor:pointer;font-family:'Inter';
-}
-.btn-primary:hover{background:var(--teal-soft);}
-.btn-primary:disabled{opacity:0.6;cursor:default;}
-
-.stats-row{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
-.stat{
-  flex:1;min-width:140px;background:var(--white);border:1px solid var(--line);border-radius:6px;
-  padding:14px 16px;
-}
-.stat .n{font-family:'JetBrains Mono';font-size:1.5rem;color:var(--teal);font-weight:500;}
-.stat .l{font-size:0.75rem;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.03em;margin-top:2px;}
-
-.chart-wrap{background:var(--white);border:1px solid var(--line);border-radius:6px;padding:18px;margin-bottom:16px;}
-.chart-title{font-size:0.78rem;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;}
-
-.entry{
-  background:var(--white);border:1px solid var(--line);border-radius:6px;
-  padding:16px 18px;margin-bottom:10px;
-}
-.entry-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;flex-wrap:wrap;}
-.entry-date{font-family:'JetBrains Mono';font-weight:500;color:var(--teal);font-size:0.9rem;}
-.entry-time{color:var(--ink-soft);font-size:0.82rem;}
-.tag-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;}
-.tag{
-  font-size:0.72rem;padding:3px 8px;border-radius:10px;
-  background:var(--paper-2);color:var(--ink-soft);font-family:'JetBrains Mono';
-}
-.tag.wheeze{background:var(--amber-soft);color:var(--amber-text);}
-.entry-detail{font-size:0.87rem;color:var(--ink-soft);line-height:1.5;}
-.entry-detail b{color:var(--ink);font-weight:500;}
-.del{
-  background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:0.78rem;
-  text-decoration:underline;padding:0;
-}
-.empty{color:var(--ink-soft);font-size:0.9rem;text-align:center;padding:30px 0;}
-.err{color:var(--error);font-size:0.85rem;margin-top:10px;}
+.large-sub{color:var(--label-2);font-size:0.9rem;margin:0 0 22px;}
 
 .theme-toggle{
-  position:fixed;top:16px;right:16px;z-index:10;
-  padding:6px 12px;border:1px solid var(--line);border-radius:20px;
-  background:var(--white);color:var(--ink-soft);
-  font-family:'Inter';font-size:0.78rem;font-weight:500;
-  cursor:pointer;
+  padding:7px 13px;border:1px solid var(--separator);border-radius:20px;
+  background:var(--group);color:var(--label-2);
+  font-family:'Inter';font-size:0.76rem;font-weight:500;cursor:pointer;
+  min-height:34px;
 }
-.theme-toggle:hover{color:var(--teal);border-color:var(--teal);}
+.theme-toggle:hover{color:var(--tint);border-color:var(--tint);}
 
-.entry-actions{margin-top:8px;}
-.entry-sep{color:var(--line);margin:0 8px;}
+/* --- grouped lists -------------------------------------------------------- */
+.list-header{
+  font-weight:600;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.05em;
+  color:var(--label-2);margin:0 0 8px var(--pad);
+}
+.list{
+  background:var(--group);border-radius:var(--radius);
+  margin-bottom:22px;overflow:hidden;
+}
+.row{
+  display:flex;align-items:center;gap:12px;
+  min-height:48px;padding:9px var(--pad);position:relative;
+  margin:0;
+}
+/* Hairline inset from the left so it starts under the label, iOS-style. */
+.row + .row::before,.row + .row-stack::before,.row-stack + .row::before,
+.row-stack + .row-stack::before{
+  content:'';position:absolute;left:var(--pad);right:0;top:0;height:1px;
+  background:var(--separator);
+}
+.row-stack{padding:12px var(--pad);position:relative;}
+.row-label{
+  flex:1;min-width:0;font-size:1rem;font-weight:400;color:var(--label);
+  text-transform:none;letter-spacing:0;margin:0;
+}
+.row-value{
+  font-family:'JetBrains Mono';font-size:0.9rem;color:var(--label-2);
+  text-align:right;white-space:nowrap;
+}
+label.row{cursor:pointer;}
+
+/* --- switch (a real checkbox underneath) ---------------------------------- */
+.switch{
+  appearance:none;-webkit-appearance:none;margin:0;flex:none;
+  width:51px;height:31px;border-radius:16px;background:var(--separator);
+  position:relative;cursor:pointer;transition:background 0.2s ease;
+}
+.switch::after{
+  content:'';position:absolute;top:2px;left:2px;width:27px;height:27px;
+  border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.28);
+  transition:transform 0.2s ease;
+}
+.switch:checked{background:var(--tint);}
+.switch:checked::after{transform:translateX(20px);}
+.switch:focus-visible{outline:2px solid var(--tint);outline-offset:2px;}
+
+/* --- segmented control (severity) ----------------------------------------- */
+.severity{
+  display:flex;gap:2px;padding:2px;background:var(--bg);
+  border-radius:9px;margin:0 var(--pad) 12px;
+}
+.sev-btn{
+  flex:1;min-height:36px;display:flex;align-items:center;justify-content:center;
+  text-align:center;padding:6px 2px;border-radius:7px;cursor:pointer;
+  font-family:'Inter';font-weight:500;font-size:0.82rem;color:var(--label-2);
+  user-select:none;-webkit-user-select:none;
+}
+.sev-btn.selected{
+  background:var(--group);color:var(--label);
+  box-shadow:0 1px 3px rgba(0,0,0,0.14);
+}
+.sev-btn:focus-visible{outline:2px solid var(--tint);outline-offset:-2px;}
+
+/* --- stepper -------------------------------------------------------------- */
+.count-input{display:flex;align-items:center;gap:6px;flex:none;}
+.count-input button{
+  width:44px;height:44px;border:1px solid var(--separator);background:var(--bg);
+  border-radius:10px;cursor:pointer;font-size:1.3rem;color:var(--tint);
+  display:flex;align-items:center;justify-content:center;
+}
+.count-input button:hover{border-color:var(--tint);}
+.count-input span{
+  font-family:'JetBrains Mono';font-size:1.05rem;min-width:28px;text-align:center;
+}
+
+/* --- inputs --------------------------------------------------------------- */
+/* 16px is the threshold under which iOS Safari zooms the page on focus and
+   never fully zooms back out. Every text control here stays at or above it. */
+input[type=text],input[type=number],input[type=datetime-local],textarea,select{
+  font-family:'Inter';font-size:16px;color:var(--label);
+  background:none;border:none;padding:0;margin:0;width:100%;
+}
+/* :not(.switch) matters — the toggle is an input too, and without it the
+   switch inherits the value-field sizing and stretches across the row. */
+.row input:not(.switch),.row select{
+  flex:1 1 auto;min-width:0;width:auto;text-align:right;color:var(--label);
+}
+/* Labels in a value row stay on one line and ellipsise rather than stacking
+   up beside their control. */
+.row > .row-label{
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  /* grow into spare space but never shrink: the native datetime control has a
+     wide intrinsic size and was squeezing the label into an ellipsis. */
+  flex:1 0 auto;
+}
+.row input::placeholder,.row-stack textarea::placeholder{color:var(--label-3);}
+.row select{
+  appearance:none;-webkit-appearance:none;
+  text-align:right;text-align-last:right;
+}
+/* Safari renders the datetime picker at its own intrinsic width and centres
+   the value when the field is wider, which left this one control centred while
+   everything else aligned. Resetting appearance is what lets text-align win. */
+input[type=datetime-local]{
+  -webkit-appearance:none;appearance:none;text-align:right;
+}
+.row-stack textarea{
+  min-height:52px;resize:vertical;margin-top:6px;line-height:1.45;
+}
+.row-stack .row-label{display:block;font-size:0.78rem;color:var(--label-2);}
+.row:focus-within,.row-stack:focus-within{background:var(--group-2);}
+
+/* --- buttons -------------------------------------------------------------- */
+.btn{
+  display:block;width:100%;padding:15px;border:none;border-radius:12px;
+  background:var(--tint);color:var(--on-tint);
+  font-family:'Inter';font-weight:600;font-size:1rem;cursor:pointer;
+  min-height:50px;
+}
+.btn:hover{filter:brightness(1.08);}
+.btn:active{transform:translateY(1px);}
+.btn:disabled{opacity:0.55;cursor:default;transform:none;}
+.btn-quiet{
+  background:var(--group);color:var(--tint);border:1px solid var(--separator);
+}
+.btn-row{
+  width:auto;padding:10px 16px;min-height:40px;font-size:0.88rem;border-radius:10px;
+  flex:none;
+}
+.linkbtn{
+  background:none;border:none;color:var(--tint);cursor:pointer;
+  font-family:'Inter';font-size:0.85rem;padding:6px 0;min-height:36px;
+}
+.linkbtn.danger{color:var(--danger);}
+button:focus-visible,.linkbtn:focus-visible,a:focus-visible{
+  outline:2px solid var(--tint);outline-offset:2px;
+}
+input:focus-visible,textarea:focus-visible,select:focus-visible{
+  outline:2px solid var(--tint);outline-offset:2px;border-radius:4px;
+}
+
+/* --- today: status block -------------------------------------------------- */
+.status{
+  background:var(--group);border-radius:var(--radius);
+  padding:20px var(--pad);margin-bottom:22px;
+}
+.status-big{
+  font-family:'JetBrains Mono';font-weight:500;font-size:2.6rem;line-height:1;
+  color:var(--tint);
+}
+.status-cap{
+  font-size:0.74rem;text-transform:uppercase;letter-spacing:0.05em;
+  color:var(--label-2);margin-top:6px;
+}
+.status-note{
+  color:var(--label-2);font-size:0.9rem;margin-top:14px;
+  padding-top:14px;border-top:1px solid var(--separator);
+}
+.status-note b{color:var(--label);font-weight:500;}
+
+/* --- entry list ----------------------------------------------------------- */
+.entry{padding:14px var(--pad);position:relative;}
+.entry + .entry::before{
+  content:'';position:absolute;left:var(--pad);right:0;top:0;height:1px;
+  background:var(--separator);
+}
+.entry-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}
+.entry-date{font-family:'JetBrains Mono';font-weight:500;color:var(--label);font-size:0.92rem;}
+.entry-time{color:var(--label-2);font-size:0.82rem;font-family:'JetBrains Mono';}
+.tag-row{display:flex;gap:6px;flex-wrap:wrap;margin:9px 0 0;}
+.tag{
+  font-size:0.72rem;padding:3px 9px;border-radius:11px;
+  background:var(--bg);color:var(--label-2);font-family:'JetBrains Mono';
+}
+.tag.wheeze{background:var(--amber-soft);color:var(--amber-text);}
+.entry-detail{font-size:0.86rem;color:var(--label-2);line-height:1.5;margin-top:9px;}
+.entry-detail b{color:var(--label);font-weight:500;}
+.entry-actions{margin-top:10px;display:flex;align-items:center;gap:18px;}
+.empty{color:var(--label-2);font-size:0.92rem;text-align:center;padding:34px var(--pad);}
+
+/* --- trends: stats + charts ----------------------------------------------- */
+.stats-row{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));
+  gap:10px;margin-bottom:22px;
+}
+.stat{background:var(--group);border-radius:var(--radius);padding:14px var(--pad);min-width:0;}
+.stat .n{font-family:'JetBrains Mono';font-size:1.5rem;color:var(--tint);font-weight:500;}
+.stat .l{
+  font-size:0.72rem;color:var(--label-2);text-transform:uppercase;
+  letter-spacing:0.03em;margin-top:3px;
+}
+.chart-wrap{background:var(--group);border-radius:var(--radius);padding:16px;margin-bottom:16px;}
+.chart-title{
+  font-size:0.76rem;font-weight:600;color:var(--label-2);text-transform:uppercase;
+  letter-spacing:0.04em;margin-bottom:12px;
+}
 .chart-box{position:relative;height:260px;}
 .chart-box-sm{height:220px;}
 .chart-row{display:flex;gap:16px;margin-bottom:16px;}
 .chart-row > .chart-wrap{flex:1;min-width:0;margin-bottom:0;}
+.chart-note{font-size:0.74rem;color:var(--label-2);margin-top:10px;line-height:1.45;}
+.chart-note.thin{color:var(--amber-text);}
 
+/* --- heatmap -------------------------------------------------------------- */
 .heatmap-scroll{overflow-x:auto;padding-bottom:4px;}
 .heatmap-inner{display:inline-block;}
 .heatmap-months{display:flex;gap:3px;margin-bottom:4px;}
-.heat-month{width:13px;flex-shrink:0;font-size:0.65rem;color:var(--ink-soft);font-family:'JetBrains Mono';white-space:nowrap;}
+.heat-month{
+  width:13px;flex-shrink:0;font-size:0.65rem;color:var(--label-2);
+  font-family:'JetBrains Mono';white-space:nowrap;
+}
 .heatmap-grid{display:flex;gap:3px;}
 .heat-week{display:flex;flex-direction:column;gap:3px;}
-.heat-cell{width:13px;height:13px;border-radius:3px;background:var(--paper-2);border:1px solid var(--line);}
-.heat-cell[data-sev]{background:color-mix(in srgb, var(--amber) var(--sev-pct,12%), var(--paper-2));}
+.heat-cell{
+  width:13px;height:13px;border-radius:3px;
+  background:var(--bg);border:1px solid var(--separator);
+}
+.heat-cell[data-sev]{background:color-mix(in srgb,var(--amber) var(--sev-pct,12%),var(--bg));}
 .heat-cell.no-entry{border-style:dashed;}
 .heat-cell.future{visibility:hidden;}
-.heat-legend{display:flex;align-items:center;gap:6px;margin-top:12px;font-size:0.72rem;color:var(--ink-soft);}
+.heat-legend{
+  display:flex;align-items:center;gap:6px;margin-top:12px;
+  font-size:0.72rem;color:var(--label-2);flex-wrap:wrap;
+}
 .heat-legend .heat-cell{width:12px;height:12px;}
 .heat-tooltip{
-  position:fixed;pointer-events:none;z-index:20;display:none;
+  position:fixed;pointer-events:none;z-index:60;display:none;
   color:#fff;font-family:'Inter';font-size:0.78rem;
-  padding:5px 9px;border-radius:4px;white-space:nowrap;
+  padding:5px 9px;border-radius:6px;white-space:nowrap;
 }
 
-/* Keep iOS from re-scaling text on orientation change, and make sure nothing
-   can push the page wider than the viewport. */
-html{-webkit-text-size-adjust:100%;}
-body{overflow-x:hidden;}
-canvas,svg,img{max-width:100%;}
+/* --- address autocomplete ------------------------------------------------- */
+.addr-wrap{position:relative;}
+.addr-wrap input{text-align:left;}
+.suggestions{
+  position:absolute;top:100%;left:0;right:0;z-index:30;margin-top:6px;
+  background:var(--group);border:1px solid var(--separator);border-radius:10px;
+  overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.22);
+}
+.s-item{padding:11px 12px;cursor:pointer;font-size:0.9rem;border-bottom:1px solid var(--separator);}
+.s-item:last-child{border-bottom:none;}
+.s-item.active{background:var(--group-2);}
+.s-main{display:block;color:var(--label);}
+.s-sub{display:block;color:var(--label-2);font-size:0.8rem;margin-top:2px;}
+
+.err{color:var(--danger);font-size:0.86rem;margin:10px var(--pad) 0;}
+
+/* --- tab bar -------------------------------------------------------------- */
+/* Fixed to the bottom on a phone, where the thumb is. env() keeps it clear of
+   the home indicator - which needs viewport-fit=cover on the viewport meta to
+   report anything but zero. */
+.tabbar{
+  position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;
+  background:var(--group);border-top:1px solid var(--separator);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.tabbar button{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  padding:8px 4px 7px;min-height:54px;background:none;border:none;cursor:pointer;
+  color:var(--label-3);font-family:'Inter';font-weight:500;font-size:0.66rem;
+}
+.tabbar button.active{color:var(--tint);}
+.tabbar svg{width:24px;height:24px;display:block;}
+
+/* The form is ~1770px on a phone, so Save docks just above the tab bar rather
+   than sitting at the bottom of that scroll. The entries that matter most get
+   logged half-asleep at 4am; reaching Save should never mean a two-screen
+   scroll. */
+.save-dock{
+  position:sticky;bottom:calc(66px + env(safe-area-inset-bottom));
+  z-index:20;margin-top:24px;padding:12px 0 4px;
+  background:linear-gradient(to top,var(--bg) 72%,transparent);
+}
+.save-dock .err{margin:0 0 10px;}
+
+.dest{display:none;}
+.dest.active{display:block;}
+
+@media (min-width:641px){
+  /* On a desktop the thumb argument disappears, so the same markup becomes a
+     segmented control at the top of the page instead. */
+  .tabbar{
+    position:static;max-width:760px;margin:0 auto 24px;padding:3px;gap:3px;
+    background:var(--bg);border:1px solid var(--separator);border-radius:11px;
+  }
+  .tabbar button{
+    flex-direction:row;gap:8px;min-height:42px;border-radius:9px;font-size:0.86rem;
+  }
+  .tabbar button.active{background:var(--group);}
+  .tabbar svg{width:18px;height:18px;}
+  body{padding-bottom:48px;}
+  .large-title{font-size:2.1rem;}
+  /* the tab bar is static up here, so the dock only needs to clear the edge */
+  .save-dock{bottom:16px;}
+}
 
 @media (max-width:640px){
-  /* iOS Safari zooms the page in whenever you focus an input whose font-size
-     is under 16px, and never fully zooms back out — that zoom is what makes
-     the layout appear to shift around. 16px is the threshold that stops it. */
-  input[type=text],input[type=datetime-local],input[type=number],textarea,select{
-    font-size:16px;
-  }
-
-  header{padding:26px 16px 18px;}
-  h1{font-size:1.55rem;}
-  .sub{font-size:0.88rem;margin-bottom:14px;}
-  .wave{height:32px;}
-  .wrap{padding:0 16px;}
-  .card{padding:16px;}
-  .chart-wrap{padding:14px 12px;}
-  /* Taller on mobile: the legend wraps to more rows at narrow widths and would
-     otherwise eat into the plot area. */
-  .chart-box{height:320px;}
-  .chart-box-sm{height:260px;}
-  .chart-row{flex-direction:column;}
+  .chart-box{height:300px;}
+  .chart-box-sm{height:250px;}
+  .chart-row{flex-direction:column;gap:0;}
+  .chart-row > .chart-wrap{margin-bottom:16px;}
   .heat-cell{width:11px;height:11px;}
   .heat-month{width:11px;}
-
-  /* min-width:140px on a flex child can't shrink below its floor, which is
-     what overflows the row on a narrow screen. */
-  .row{gap:10px;}
-  .row > .field{min-width:0;}
-  /* The address keeps its floor here, so it is the one field that still can't
-     shrink — which left the fetch button beside it squeezed narrow enough to
-     wrap "Fetch conditions" onto two lines, towering over the input. Give the
-     address the whole line and let the button wrap below it at full width. */
-  .row > .field.address{min-width:100%;}
-  .stats-row{gap:8px;}
-  .stat{min-width:0;flex:1 1 calc(50% - 4px);padding:12px 14px;}
-  .stat .n{font-size:1.3rem;}
-
-  /* Comfortable tap targets */
-  .sev-btn{padding:13px 0;}
-  .count-input button{width:44px;height:44px;}
-  .check-item{padding:2px 0;}
-  .check-item input[type=checkbox]{width:22px;height:22px;}
-  .btn-primary{padding:13px 20px;white-space:normal;}
-  .del{padding:6px 0;}
-
-  .theme-toggle{top:10px;right:10px;padding:5px 11px;}
-  .tabs{margin:20px 0 16px;}
-  .tab{margin-right:14px;}
+  .stats-row{grid-template-columns:repeat(auto-fit,minmax(120px,1fr));}
+  .stat .n{font-size:1.35rem;}
 }
 </style>
 </head>
 <body>
 
-<button type="button" id="theme-toggle" class="theme-toggle" title="Toggle color theme" aria-label="Toggle color theme">Auto</button>
-
-<header>
-  <div class="inner">
-    <h1>Wheezer</h1>
-    <p class="sub">Daily tracking for wheezing, inhaler use, and possible triggers</p>
-    <svg class="wave" viewBox="0 0 700 44" preserveAspectRatio="none">
-      <path d="M0,22 Q20,22 30,10 T60,22 Q80,22 90,34 T120,22 L700,22"/>
-    </svg>
-  </div>
-</header>
+<div class="appbar">
+  <span class="wordmark">Wheezer</span>
+  <button type="button" id="theme-toggle" class="theme-toggle" title="Toggle color theme" aria-label="Toggle color theme">Auto</button>
+</div>
 
 <div class="wrap">
-  <div class="tabs">
-    <button class="tab active" data-tab="entry">New Entry</button>
-    <button class="tab" data-tab="history">History &amp; Trends</button>
-  </div>
+  <nav class="tabbar" id="tabbar" aria-label="Sections">
+    <button type="button" data-dest="today" class="active" aria-current="page">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h3.5l2.5-6 4 12 2.5-6H21"/></svg>
+      Today
+    </button>
+    <button type="button" data-dest="log">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
+      Log
+    </button>
+    <button type="button" data-dest="trends">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+      Trends
+    </button>
+  </nav>
 
-  <div id="tab-entry">
-    <div class="card">
-      <div class="field">
-        <label>Date &amp; time</label>
+  <!-- ===================== TODAY ===================== -->
+  <section class="dest active" id="dest-today">
+    <h1 class="large-title">Today</h1>
+    <p class="large-sub" id="today-date">&nbsp;</p>
+
+    <div class="status">
+      <div class="status-big" id="today-clear">–</div>
+      <div class="status-cap">Days since a symptom</div>
+      <div class="status-note" id="today-last">No entries logged yet.</div>
+    </div>
+
+    <button type="button" class="btn" id="go-log">Log symptoms</button>
+
+    <div class="list-header" style="margin-top:28px;">Recent entries</div>
+    <div class="list" id="entryList"></div>
+  </section>
+
+  <!-- ====================== LOG ====================== -->
+  <section class="dest" id="dest-log">
+    <h1 class="large-title">Log</h1>
+    <p class="large-sub">How are you doing right now?</p>
+
+    <div class="list-header">When</div>
+    <div class="list">
+      <div class="row">
+        <label class="row-label" for="f-datetime">Date &amp; time</label>
         <input type="datetime-local" id="f-datetime">
       </div>
+    </div>
 
-      <div class="section-label">Symptoms</div>
-
-      <div class="symptom">
-        <label class="check-item"><input type="checkbox" id="f-wheeze"> <span>Wheezing</span></label>
-        <div id="sev-wheeze-wrap" style="display:none;">
-          <div class="severity" id="sev-wheeze">
-            <div class="sev-btn" data-val="0">None</div>
-            <div class="sev-btn" data-val="1">Mild</div>
-            <div class="sev-btn" data-val="2">Moderate</div>
-            <div class="sev-btn" data-val="3">Severe</div>
-          </div>
+    <div class="list-header">Symptoms</div>
+    <div class="list">
+      <label class="row"><span class="row-label">Wheezing</span><input type="checkbox" class="switch" id="f-wheeze"></label>
+      <div id="sev-wheeze-wrap" style="display:none;">
+        <div class="severity" id="sev-wheeze">
+          <div class="sev-btn" data-val="0" role="button" tabindex="0">None</div>
+          <div class="sev-btn" data-val="1" role="button" tabindex="0">Mild</div>
+          <div class="sev-btn" data-val="2" role="button" tabindex="0">Moderate</div>
+          <div class="sev-btn" data-val="3" role="button" tabindex="0">Severe</div>
         </div>
       </div>
 
-      <div class="symptom">
-        <label class="check-item"><input type="checkbox" id="f-cough"> <span>Coughing</span></label>
-        <div id="sev-cough-wrap" style="display:none;">
-          <div class="severity" id="sev-cough">
-            <div class="sev-btn" data-val="0">None</div>
-            <div class="sev-btn" data-val="1">Mild</div>
-            <div class="sev-btn" data-val="2">Moderate</div>
-            <div class="sev-btn" data-val="3">Severe</div>
-          </div>
+      <label class="row"><span class="row-label">Coughing</span><input type="checkbox" class="switch" id="f-cough"></label>
+      <div id="sev-cough-wrap" style="display:none;">
+        <div class="severity" id="sev-cough">
+          <div class="sev-btn" data-val="0" role="button" tabindex="0">None</div>
+          <div class="sev-btn" data-val="1" role="button" tabindex="0">Mild</div>
+          <div class="sev-btn" data-val="2" role="button" tabindex="0">Moderate</div>
+          <div class="sev-btn" data-val="3" role="button" tabindex="0">Severe</div>
         </div>
       </div>
 
-      <div class="symptom">
-        <label class="check-item"><input type="checkbox" id="f-chest"> <span>Chest tightness</span></label>
-        <div id="sev-chest-wrap" style="display:none;">
-          <div class="severity" id="sev-chest">
-            <div class="sev-btn" data-val="0">None</div>
-            <div class="sev-btn" data-val="1">Mild</div>
-            <div class="sev-btn" data-val="2">Moderate</div>
-            <div class="sev-btn" data-val="3">Severe</div>
-          </div>
+      <label class="row"><span class="row-label">Chest tightness</span><input type="checkbox" class="switch" id="f-chest"></label>
+      <div id="sev-chest-wrap" style="display:none;">
+        <div class="severity" id="sev-chest">
+          <div class="sev-btn" data-val="0" role="button" tabindex="0">None</div>
+          <div class="sev-btn" data-val="1" role="button" tabindex="0">Mild</div>
+          <div class="sev-btn" data-val="2" role="button" tabindex="0">Moderate</div>
+          <div class="sev-btn" data-val="3" role="button" tabindex="0">Severe</div>
         </div>
       </div>
 
-      <div class="symptom">
-        <label class="check-item"><input type="checkbox" id="f-shortness"> <span>Shortness of breath</span></label>
-        <div id="sev-shortness-wrap" style="display:none;">
-          <div class="severity" id="sev-shortness">
-            <div class="sev-btn" data-val="0">None</div>
-            <div class="sev-btn" data-val="1">Mild</div>
-            <div class="sev-btn" data-val="2">Moderate</div>
-            <div class="sev-btn" data-val="3">Severe</div>
-          </div>
+      <label class="row"><span class="row-label">Shortness of breath</span><input type="checkbox" class="switch" id="f-shortness"></label>
+      <div id="sev-shortness-wrap" style="display:none;">
+        <div class="severity" id="sev-shortness">
+          <div class="sev-btn" data-val="0" role="button" tabindex="0">None</div>
+          <div class="sev-btn" data-val="1" role="button" tabindex="0">Mild</div>
+          <div class="sev-btn" data-val="2" role="button" tabindex="0">Moderate</div>
+          <div class="sev-btn" data-val="3" role="button" tabindex="0">Severe</div>
         </div>
       </div>
 
-      <div class="symptom">
-        <label class="check-item"><input type="checkbox" id="f-phlegm"> <span>Phlegm / mucus</span></label>
-      </div>
+      <label class="row"><span class="row-label">Phlegm / mucus</span><input type="checkbox" class="switch" id="f-phlegm"></label>
+    </div>
 
-      <div class="section-label">Inhaler use</div>
-
-      <div class="field">
-        <label>Inhaler puffs</label>
+    <div class="list-header">Inhaler</div>
+    <div class="list">
+      <div class="row">
+        <span class="row-label" id="puffs-label">Puffs taken</span>
         <div class="count-input">
-          <button type="button" id="puffs-minus">–</button>
-          <span id="puffs-count">0</span>
-          <button type="button" id="puffs-plus">+</button>
+          <button type="button" id="puffs-minus" aria-label="One fewer puff">–</button>
+          <span id="puffs-count" role="status" aria-labelledby="puffs-label">0</span>
+          <button type="button" id="puffs-plus" aria-label="One more puff">+</button>
         </div>
       </div>
+    </div>
 
-      <div class="section-label">Environment</div>
-
+    <div class="list-header">Conditions</div>
+    <div class="list">
+      <div class="row-stack addr-wrap">
+        <label class="row-label" for="f-address">Address</label>
+        <input type="text" id="f-address" placeholder="Start typing an address"
+               autocomplete="off" autocapitalize="off" spellcheck="false">
+        <div class="suggestions" id="addr-suggestions" hidden></div>
+      </div>
+      <div class="row-stack">
+        <button type="button" class="btn btn-quiet" id="aqi-fetch-btn">Fetch conditions</button>
+      </div>
       <div class="row">
-        <div class="field address">
-          <label>Address</label>
-          <input type="text" id="f-address" placeholder="Start typing an address"
-                 autocomplete="off" autocapitalize="off" spellcheck="false">
-          <div class="suggestions" id="addr-suggestions" hidden></div>
-        </div>
-        <div class="field" style="display:flex;align-items:flex-end;">
-          <button type="button" class="btn-primary" id="aqi-fetch-btn" style="width:100%;">Fetch conditions</button>
-        </div>
+        <label class="row-label" for="f-aqi">AQI now</label>
+        <input type="number" id="f-aqi" placeholder="—">
       </div>
-      <div class="err" id="aqi-err" style="display:none;margin-top:-8px;margin-bottom:16px;"></div>
-
       <div class="row">
-        <div class="field">
-          <label>Outdoor AQI at time of entry</label>
-          <input type="number" id="f-aqi" placeholder="e.g. 42">
-        </div>
-        <div class="field">
-          <label>Today's peak AQI (if known)</label>
-          <input type="number" id="f-aqi-peak" placeholder="e.g. 78">
-        </div>
+        <label class="row-label" for="f-aqi-peak">Peak AQI today</label>
+        <input type="number" id="f-aqi-peak" placeholder="—">
       </div>
-
       <div class="row">
-        <div class="field">
-          <label>Pollen level</label>
-          <input type="text" id="f-pollen-level" placeholder="e.g. High (tree)">
-        </div>
-        <div class="field">
-          <label>Pollen index (0–5)</label>
-          <input type="number" id="f-pollen-index" min="0" max="5" placeholder="e.g. 4">
-        </div>
+        <label class="row-label" for="f-pollen-level">Pollen level</label>
+        <input type="text" id="f-pollen-level" placeholder="—">
       </div>
-
       <div class="row">
-        <div class="field">
-          <label>Temperature (°F)</label>
-          <input type="number" id="f-temp" placeholder="e.g. 88">
-        </div>
-        <div class="field">
-          <label>Humidity (%)</label>
-          <input type="number" id="f-humidity" placeholder="e.g. 55">
-        </div>
+        <label class="row-label" for="f-pollen-index">Pollen index</label>
+        <input type="number" id="f-pollen-index" min="0" max="5" placeholder="0–5">
       </div>
-
       <div class="row">
-        <div class="field">
-          <label>Weather / air conditions</label>
-          <input type="text" id="f-weather" placeholder="e.g. Partly cloudy, Windy, Smoke / haze">
-        </div>
+        <label class="row-label" for="f-temp">Temperature</label>
+        <input type="number" id="f-temp" placeholder="°F">
       </div>
-
-      <div class="field">
-        <label>Setting</label>
+      <div class="row">
+        <label class="row-label" for="f-humidity">Humidity</label>
+        <input type="number" id="f-humidity" placeholder="%">
+      </div>
+      <div class="row">
+        <label class="row-label" for="f-weather">Weather</label>
+        <input type="text" id="f-weather" placeholder="—">
+      </div>
+      <div class="row">
+        <label class="row-label" for="f-setting">Setting</label>
         <select id="f-setting">
-          <option value="">— select —</option>
+          <option value="">—</option>
           <option>Indoors — home</option>
           <option>Indoors — other</option>
           <option>Outdoors</option>
           <option>Exercise / exertion</option>
         </select>
       </div>
-
-      <div class="section-label">Diet</div>
-
-      <div class="row">
-        <div class="field">
-          <label>Breakfast</label>
-          <textarea id="f-breakfast" placeholder="e.g. eggs, coffee"></textarea>
-        </div>
-        <div class="field">
-          <label>Lunch</label>
-          <textarea id="f-lunch" placeholder="e.g. sandwich, soda"></textarea>
-        </div>
-      </div>
-      <div class="row">
-        <div class="field">
-          <label>Dinner</label>
-          <textarea id="f-dinner" placeholder="e.g. pasta, salad"></textarea>
-        </div>
-        <div class="field">
-          <label>Snacks</label>
-          <textarea id="f-snacks" placeholder="e.g. chips, chocolate"></textarea>
-        </div>
-      </div>
-
-      <div class="section-label">Notes</div>
-
-      <div class="field">
-        <label>Other notes (triggers, stress, illness, pets, cleaning products, etc.)</label>
-        <textarea id="f-notes"></textarea>
-      </div>
-
-      <button class="btn-primary" id="save-btn">Save entry</button>
-      <button class="del" id="cancel-edit-btn" style="display:none;margin-left:14px;">Cancel edit</button>
-      <div class="err" id="save-err" style="display:none;"></div>
     </div>
-  </div>
+    <div class="err" id="aqi-err" style="display:none;"></div>
 
-  <div id="tab-history" style="display:none;">
+    <div class="list-header">Diet &amp; notes</div>
+    <div class="list">
+      <div class="row-stack">
+        <label class="row-label" for="f-breakfast">Breakfast</label>
+        <textarea id="f-breakfast" placeholder="e.g. eggs, coffee"></textarea>
+      </div>
+      <div class="row-stack">
+        <label class="row-label" for="f-lunch">Lunch</label>
+        <textarea id="f-lunch" placeholder="e.g. sandwich, soda"></textarea>
+      </div>
+      <div class="row-stack">
+        <label class="row-label" for="f-dinner">Dinner</label>
+        <textarea id="f-dinner" placeholder="e.g. pasta, salad"></textarea>
+      </div>
+      <div class="row-stack">
+        <label class="row-label" for="f-snacks">Snacks</label>
+        <textarea id="f-snacks" placeholder="e.g. chips, chocolate"></textarea>
+      </div>
+      <div class="row-stack">
+        <label class="row-label" for="f-notes">Other notes</label>
+        <textarea id="f-notes" placeholder="Triggers, stress, illness, pets, cleaning products…"></textarea>
+      </div>
+    </div>
+
+    <div class="save-dock">
+      <div class="err" id="save-err" style="display:none;"></div>
+      <button type="button" class="btn" id="save-btn">Save entry</button>
+      <div style="margin-top:6px;text-align:center;">
+        <button type="button" class="linkbtn" id="cancel-edit-btn" style="display:none;">Cancel edit</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== TRENDS ==================== -->
+  <section class="dest" id="dest-trends">
+    <h1 class="large-title">Trends</h1>
+    <p class="large-sub" id="trends-sub">&nbsp;</p>
+
     <div class="stats-row">
       <div class="stat"><div class="n" id="stat-7">–</div><div class="l">Symptom days / 7</div></div>
       <div class="stat"><div class="n" id="stat-14">–</div><div class="l">Symptom days / 14</div></div>
       <div class="stat"><div class="n" id="stat-puffs">–</div><div class="l">Inhaler puffs / 7d</div></div>
       <div class="stat"><div class="n" id="stat-avgsev">–</div><div class="l">Avg severity / 7d</div></div>
     </div>
-    <div class="chart-wrap">
-      <div class="chart-title">Inhaler puffs per day</div>
-      <div class="chart-box">
-        <canvas id="puffsChart"></canvas>
-      </div>
-    </div>
 
+    <div class="list-header">Overview</div>
     <div class="chart-wrap">
       <div class="chart-title">Daily max severity</div>
       <div class="heatmap-scroll">
@@ -580,51 +657,65 @@ canvas,svg,img{max-width:100%;}
       <div class="heat-tooltip" id="heatTooltip"></div>
     </div>
 
+    <div class="chart-wrap">
+      <div class="chart-title">Inhaler puffs per day</div>
+      <div class="chart-box"><canvas id="puffsChart"></canvas></div>
+    </div>
+
+    <div class="list-header">When symptoms happen</div>
+    <div class="chart-wrap">
+      <div class="chart-title">Severity by time of day</div>
+      <div class="chart-box"><canvas id="todChart"></canvas></div>
+      <div class="chart-note" id="todChartNote"></div>
+    </div>
+
+    <div class="chart-wrap">
+      <div class="chart-title">Which symptoms show up</div>
+      <div class="chart-box"><canvas id="symptomMixChart"></canvas></div>
+      <div class="chart-note" id="symptomMixChartNote"></div>
+    </div>
+
+    <div class="list-header">Environment</div>
     <div class="chart-row">
       <div class="chart-wrap">
         <div class="chart-title">AQI vs severity</div>
-        <div class="chart-box chart-box-sm">
-          <canvas id="sevAqiChart"></canvas>
-        </div>
+        <div class="chart-box chart-box-sm"><canvas id="sevAqiChart"></canvas></div>
+        <div class="chart-note" id="sevAqiChartNote"></div>
       </div>
       <div class="chart-wrap">
         <div class="chart-title">Pollen index vs severity</div>
-        <div class="chart-box chart-box-sm">
-          <canvas id="sevPollenChart"></canvas>
-        </div>
+        <div class="chart-box chart-box-sm"><canvas id="sevPollenChart"></canvas></div>
+        <div class="chart-note" id="sevPollenChartNote"></div>
       </div>
     </div>
 
     <div class="chart-wrap">
       <div class="chart-title">Humidity vs severity</div>
-      <div class="chart-box chart-box-sm">
-        <canvas id="sevHumidityChart"></canvas>
-      </div>
+      <div class="chart-box chart-box-sm"><canvas id="sevHumidityChart"></canvas></div>
+      <div class="chart-note" id="sevHumidityChartNote"></div>
     </div>
 
     <div class="chart-wrap">
       <div class="chart-title">Avg severity by setting</div>
-      <div class="chart-box">
-        <canvas id="settingChart"></canvas>
-      </div>
+      <div class="chart-box"><canvas id="settingChart"></canvas></div>
     </div>
 
+    <div class="list-header">Timeline</div>
     <div class="chart-wrap">
       <div class="chart-title">Symptom severity &amp; AQI — last 20 entries</div>
-      <div class="chart-box">
-        <canvas id="trendChart"></canvas>
-      </div>
+      <div class="chart-box"><canvas id="trendChart"></canvas></div>
     </div>
-    <div style="display:flex;gap:10px;margin-bottom:14px;">
-      <a href="/api/export" style="text-decoration:none;">
-        <button class="btn-primary" type="button" style="background:var(--teal-soft);">Export all (JSON)</button>
+
+    <div class="list-header">Export</div>
+    <div class="list">
+      <a class="row" href="/api/export" style="text-decoration:none;color:inherit;">
+        <span class="row-label">Download all data</span><span class="row-value">JSON</span>
       </a>
-      <a href="/api/export/csv" style="text-decoration:none;">
-        <button class="btn-primary" type="button" style="background:var(--teal-soft);">Export entries (CSV)</button>
+      <a class="row" href="/api/export/csv" style="text-decoration:none;color:inherit;">
+        <span class="row-label">Download entries</span><span class="row-value">CSV</span>
       </a>
     </div>
-    <div id="entryList"></div>
-  </div>
+  </section>
 </div>
 
 <script>
@@ -639,6 +730,8 @@ let puffsCount = 0;
 let trendChartInstance = null;
 let puffsChartInstance = null;
 let settingChartInstance = null;
+let todChartInstance = null;
+let symptomMixChartInstance = null;
 const scatterInstances = {};
 let editingEntryId = null;
 
@@ -657,6 +750,9 @@ const THEME_KEY = 'wheezer-theme';
 // rather than a made-up label, and charts clamp them to the Severe end
 // rather than clipping them off the scale entirely.
 const SEVERITY_MAX = 3;
+// Fewer distinct readings than this and a scatter is drawing stripes, not a
+// trend - the chart still renders, but it says so underneath.
+const MIN_TRIGGER_SPREAD = 4;
 const SEVERITY_LABELS = ['None', 'Mild', 'Moderate', 'Severe'];
 function severityLabel(v){
   if(v === null || v === undefined || v === '') return '';
@@ -672,22 +768,22 @@ function isDarkMode(){
 
 function chartPalette(){
   return isDarkMode() ? {
-    textMuted: '#93A6A2',
-    textStrong: '#E7ECEA',
-    gridLine: '#2B3B39',
-    tooltipBg: '#0F1C1A',
+    textMuted: '#9BABA8',
+    textStrong: '#E9EEEC',
+    gridLine: '#2A3634',
+    tooltipBg: '#08100F',
     wheeze: '#E3A75C',
     cough: '#78C4BD',
     chest: '#B98BD1',
     shortness: '#6BA8E0',
     phlegm: '#8FCF7A',
-    aqi: '#A8BDB8',
-    aqiFill: 'rgba(168,189,184,0.18)'
+    aqi: '#9BABA8',
+    aqiFill: 'rgba(155,171,168,0.18)'
   } : {
-    textMuted: '#5C6D6A',
-    textStrong: '#1B2B2B',
-    gridLine: '#EAEDEB',
-    tooltipBg: '#1B2B2B',
+    textMuted: '#6B7A78',
+    textStrong: '#14201F',
+    gridLine: '#E4E8E9',
+    tooltipBg: '#14201F',
     wheeze: '#C7822F',
     cough: '#3F6E6C',
     chest: '#8B5FA3',
@@ -707,6 +803,8 @@ function renderAllCharts(){
   renderChart();
   renderPuffsChart();
   renderHeatmap();
+  renderTodChart();
+  renderSymptomMixChart();
   renderTriggerScatter('sevAqiChart', 'aqi', 'AQI', chartPalette().shortness);
   renderTriggerScatter('sevPollenChart', 'pollenIndex', 'Pollen index', chartPalette().chest);
   renderTriggerScatter('sevHumidityChart', 'humidity', 'Humidity', chartPalette().phlegm, '%');
@@ -714,9 +812,7 @@ function renderAllCharts(){
 }
 
 function refreshChartsForTheme(){
-  if (document.getElementById('tab-history').style.display === 'block') {
-    renderAllCharts();
-  }
+  if (activeDest === 'trends') renderAllCharts();
 }
 
 updateThemeToggleLabel();
@@ -976,16 +1072,30 @@ document.getElementById('aqi-fetch-btn').addEventListener('click', async () => {
   }
 });
 
-document.querySelectorAll('.tab').forEach(t=>{
-  t.addEventListener('click',()=>{
-    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-    t.classList.add('active');
-    const tab = t.dataset.tab;
-    document.getElementById('tab-entry').style.display = tab==='entry' ? 'block':'none';
-    document.getElementById('tab-history').style.display = tab==='history' ? 'block':'none';
-    if(tab==='history') loadEntries();
+let activeDest = 'today';
+
+function showDest(dest){
+  activeDest = dest;
+  document.querySelectorAll('#tabbar button').forEach(b=>{
+    const on = b.dataset.dest === dest;
+    b.classList.toggle('active', on);
+    if(on) b.setAttribute('aria-current','page');
+    else b.removeAttribute('aria-current');
   });
+  document.querySelectorAll('.dest').forEach(sec=>{
+    sec.classList.toggle('active', sec.id === 'dest-' + dest);
+  });
+  window.scrollTo(0, 0);
+  // Chart.js measures the canvas as it builds, so a chart created while its
+  // section is display:none sizes itself to zero and stays that way. They are
+  // only ever built once Trends is actually on screen.
+  if(dest === 'trends') renderAllCharts();
+}
+
+document.querySelectorAll('#tabbar button').forEach(b=>{
+  b.addEventListener('click', ()=> showDest(b.dataset.dest));
 });
+document.getElementById('go-log').addEventListener('click', ()=> showDest('log'));
 
 function wireSeverity(containerId, onSelect){
   document.querySelectorAll('#'+containerId+' .sev-btn').forEach(b=>{
@@ -993,6 +1103,10 @@ function wireSeverity(containerId, onSelect){
       document.querySelectorAll('#'+containerId+' .sev-btn').forEach(x=>x.classList.remove('selected'));
       b.classList.add('selected');
       onSelect(parseInt(b.dataset.val));
+    });
+    // role=button on a div carries the semantics but not the behaviour.
+    b.addEventListener('keydown',(ev)=>{
+      if(ev.key === 'Enter' || ev.key === ' '){ ev.preventDefault(); b.click(); }
     });
   });
 }
@@ -1127,7 +1241,10 @@ document.getElementById('save-btn').addEventListener('click', async ()=>{
   exitEditMode();
   resetEntryForm();
 
-  document.querySelector('.tab[data-tab="history"]').click();
+  // The old two-tab UI refreshed the list only as a side effect of switching
+  // tabs; reload explicitly so the entry that was just written shows up.
+  await loadEntries();
+  showDest('today');
 });
 
 // Recomputed per call rather than against a `now` captured at page load, so a
@@ -1154,32 +1271,97 @@ function maxSeverity(e){
   return Math.max(e.wheezeSeverity||0, e.coughSeverity||0, e.chestSeverity||0, e.shortnessSeverity||0);
 }
 
+// Whole days since the last entry that recorded anything, counted from the
+// most recent symptomatic date rather than from the last entry - a run of
+// symptom-free days is the number worth watching, and it should keep climbing
+// even on days nothing was logged at all.
+function daysSinceSymptom(){
+  const dates = entries.filter(hasAnySymptom).map(e => e.date).filter(Boolean).sort();
+  if(!dates.length) return null;
+  const last = new Date(dates[dates.length - 1] + 'T00:00:00');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.max(0, Math.round((today - last) / 86400000));
+}
+
 // Entries saved before the single inhaler-puffs field existed only have the
 // older scheduled-dose/rescue-puffs split; treat rescuePuffs as the puff
 // count for those rather than losing them.
+// "Today" / "Yesterday" / "Tue, Aug 18" reads better on the record than the
+// raw ISO date. The stored value stays ISO — this is presentation only.
+function formatEntryDate(dateStr){
+  if(!dateStr) return '';
+  const age = Math.floor(daysAgo(dateStr));
+  if(age === 0) return 'Today';
+  if(age === 1) return 'Yesterday';
+  const d = new Date(dateStr + 'T00:00:00');
+  if(Number.isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString(undefined, { weekday:'short', month:'short', day:'numeric' });
+}
+
 function puffsOf(e){
   const v = e.inhalerPuffs !== undefined ? e.inhalerPuffs : e.rescuePuffs;
   return parseInt(v) || 0;
 }
 
+// Kept as the single entry point the loaders call; the two destinations each
+// render their own half.
 function renderHistory(){
+  renderToday();
+  renderTrends();
+}
+
+function renderToday(){
+  const now = new Date();
+  document.getElementById('today-date').textContent =
+    now.toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric' });
+
+  const clear = daysSinceSymptom();
+  document.getElementById('today-clear').textContent = clear === null ? '\u2013' : clear;
+
+  // entries arrive newest first, so the head of the list is the last entry.
+  const last = entries[0];
+  const noteEl = document.getElementById('today-last');
+  if(!last){
+    noteEl.textContent = 'No entries logged yet.';
+  } else {
+    const esc = escapeHtml;
+    const sev = maxSeverity(last);
+    const bits = [sev > 0 ? severityLabel(sev).toLowerCase() + ' symptoms' : 'no symptoms'];
+    const puffs = puffsOf(last);
+    if(puffs > 0) bits.push(puffs + ' puff' + (puffs > 1 ? 's' : ''));
+    noteEl.innerHTML = 'Last entry <b>' + esc(formatEntryDate(last.date)) + '</b> at <b>' +
+      esc(last.time || '') + '</b> \u2014 ' + esc(bits.join(' \u00B7 ')) + '.';
+  }
+
+  renderEntryList();
+}
+
+function renderTrends(){
   const symptom7 = new Set(entries.filter(e=>hasAnySymptom(e) && withinDays(e.date,7)).map(e=>e.date)).size;
   const symptom14 = new Set(entries.filter(e=>hasAnySymptom(e) && withinDays(e.date,14)).map(e=>e.date)).size;
   const puffs7 = entries.filter(e=>withinDays(e.date,7)).reduce((s,e)=>s+puffsOf(e),0);
   const recent7 = entries.filter(e=>withinDays(e.date,7));
   const avgSev7 = recent7.length
     ? (recent7.reduce((s,e)=>s+maxSeverity(e),0) / recent7.length).toFixed(1)
-    : '–';
+    : '\u2013';
   document.getElementById('stat-7').textContent = symptom7;
   document.getElementById('stat-14').textContent = symptom14;
   document.getElementById('stat-puffs').textContent = puffs7;
   document.getElementById('stat-avgsev').textContent = avgSev7;
 
-  renderAllCharts();
+  const n = entries.length;
+  document.getElementById('trends-sub').textContent = n
+    ? 'Patterns across ' + n + ' entr' + (n === 1 ? 'y' : 'ies') + '.'
+    : 'Nothing logged yet.';
 
+  if(activeDest === 'trends') renderAllCharts();
+}
+
+function renderEntryList(){
   const list = document.getElementById('entryList');
   if(!entries.length){
-    list.innerHTML = '<div class="empty">No entries logged yet. Add your first one above.</div>';
+    list.innerHTML = '<div class="empty">No entries logged yet. Tap Log symptoms to add your first.</div>';
     return;
   }
   // Every value below is user-entered and goes through innerHTML, so all of it
@@ -1211,15 +1393,14 @@ function renderHistory(){
 
     return `<div class="entry">
       <div class="entry-top">
-        <span class="entry-date">${esc(e.date||'')}</span>
+        <span class="entry-date">${esc(formatEntryDate(e.date))}</span>
         <span class="entry-time">${esc(e.time||'')}</span>
       </div>
       <div class="tag-row">${tags.join('')}</div>
       <div class="entry-detail">${detail}</div>
       <div class="entry-actions">
-        <button class="del" data-action="edit" data-id="${esc(e.id)}">Edit</button>
-        <span class="entry-sep">·</span>
-        <button class="del" data-action="delete" data-id="${esc(e.id)}">Delete</button>
+        <button class="linkbtn" data-action="edit" data-id="${esc(e.id)}">Edit</button>
+        <button class="linkbtn danger" data-action="delete" data-id="${esc(e.id)}">Delete</button>
       </div>
     </div>`;
   }).join('');
@@ -1476,10 +1657,14 @@ function renderTriggerScatter(canvasId, field, triggerLabel, color, unit = ''){
   const ctx = document.getElementById(canvasId);
   if(scatterInstances[canvasId]){ scatterInstances[canvasId].destroy(); scatterInstances[canvasId] = null; }
 
+  const note = document.getElementById(canvasId + 'Note');
   const points = entries
     .filter(e => e[field] !== undefined && e[field] !== null && e[field] !== '' && !Number.isNaN(Number(e[field])))
     .map(e => ({ x: maxSeverity(e), y: Number(e[field]) }));
-  if(!points.length) return;
+  if(!points.length){
+    if(note){ note.textContent = `No entries have a ${triggerLabel.toLowerCase()} recorded yet.`; note.classList.remove('thin'); }
+    return;
+  }
 
   const pal = chartPalette();
   const pointColor = hexToRgba(color, 0.65);
@@ -1520,12 +1705,217 @@ function renderTriggerScatter(canvasId, field, triggerLabel, color, unit = ''){
         },
         y: {
           title: { display: true, text: unit ? `${triggerLabel} (${unit})` : triggerLabel, color: pal.textMuted, font: { family: 'Inter', size: 11 } },
-          ticks: { color: pal.textMuted, font: { family: 'Inter', size: 10 } },
+          ticks: { color: pal.textMuted, font: { family: 'Inter', size: 10 }, precision: 0 },
           grid: { color: pal.gridLine }
         }
       }
     }
   });
+
+  if(!note) return;
+  // A scatter will happily draw a shape out of a reading that barely moved all
+  // month - pollen sitting on 1-2 the whole time being the usual case - and
+  // that shape looks like a finding. Say so instead of letting it imply one.
+  const spread = new Set(points.map(p => p.y)).size;
+  if(spread < MIN_TRIGGER_SPREAD){
+    note.textContent = `${points.length} entries, but ${triggerLabel.toLowerCase()} only took ` +
+      `${spread} distinct value${spread === 1 ? '' : 's'} over this period — not enough spread to read a relationship.`;
+    note.classList.add('thin');
+  } else {
+    note.textContent = `${points.length} entries. Each dot is one entry; overlapping dots sit on top of each other.`;
+    note.classList.remove('thin');
+  }
+}
+
+// Asthma symptoms tend to cluster overnight and in the early morning, and that
+// pattern is invisible everywhere else on this page: the heatmap and the puffs
+// chart both key on `date`, so two entries on the same day collapse into one
+// cell no matter how far apart they were logged. Bucketing by hour is the only
+// view here that can show it.
+const TOD_BUCKETS = [
+  { label: '12–4am' }, { label: '4–8am' }, { label: '8am–12pm' },
+  { label: '12–4pm' }, { label: '4–8pm' }, { label: '8pm–12am' }
+];
+
+// A four-hour window holding one or two entries is an anecdote, not a pattern.
+// Those bars are drawn faded so a single bad night doesn't read as a finding —
+// see the note under the chart.
+const TOD_MIN_CONFIDENT = 3;
+
+function aggregateSeverityByTimeOfDay(){
+  const buckets = TOD_BUCKETS.map(b => ({ label: b.label, sum: 0, count: 0, symptomatic: 0 }));
+  entries.forEach(e => {
+    const hour = parseInt(String(e.time || '').split(':')[0], 10);
+    if(Number.isNaN(hour) || hour < 0 || hour > 23) return;
+    const b = buckets[Math.floor(hour / 4)];
+    b.sum += maxSeverity(e);
+    b.count++;
+    if(hasAnySymptom(e)) b.symptomatic++;
+  });
+  return buckets;
+}
+
+function renderTodChart(){
+  const ctx = document.getElementById('todChart');
+  if(todChartInstance){ todChartInstance.destroy(); todChartInstance = null; }
+  const note = document.getElementById('todChartNote');
+  const buckets = aggregateSeverityByTimeOfDay();
+  const logged = buckets.filter(b => b.count);
+  if(!logged.length){
+    note.textContent = '';
+    note.classList.remove('thin');
+    return;
+  }
+  const pal = chartPalette();
+
+  todChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: buckets.map(b => b.label),
+      // Empty windows stay on the axis as gaps rather than zero-height bars —
+      // "never logged at 2pm" and "logged at 2pm, felt fine" are different.
+      datasets: [{
+        label: 'Avg severity',
+        data: buckets.map(b => b.count ? b.sum / b.count : null),
+        backgroundColor: buckets.map(b =>
+          hexToRgba(pal.wheeze, b.count >= TOD_MIN_CONFIDENT ? 0.9 : 0.25)),
+        borderWidth: 0,
+        borderRadius: 3,
+        maxBarThickness: 46
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: pal.tooltipBg,
+          titleFont: { family: 'JetBrains Mono', size: 11 },
+          bodyFont: { family: 'Inter', size: 12 },
+          callbacks: {
+            label: (c) => {
+              const b = buckets[c.dataIndex];
+              return `avg severity ${(b.sum / b.count).toFixed(1)} · ` +
+                `${b.symptomatic}/${b.count} entr${b.count === 1 ? 'y' : 'ies'} with symptoms`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: pal.textMuted, font: { family: 'JetBrains Mono', size: 10 } },
+          grid: { display: false }
+        },
+        y: {
+          min: 0,
+          suggestedMax: SEVERITY_MAX,
+          ticks: { color: pal.textMuted, font: { family: 'Inter', size: 10 }, stepSize: 1, callback: severityLabel },
+          grid: { color: pal.gridLine },
+          title: { display: true, text: 'Avg max severity', color: pal.textMuted, font: { family: 'Inter', size: 11 } }
+        }
+      }
+    }
+  });
+
+  const thin = logged.filter(b => b.count < TOD_MIN_CONFIDENT);
+  note.textContent = thin.length
+    ? `Faded bars rest on fewer than ${TOD_MIN_CONFIDENT} entries (${thin.map(b => b.label).join(', ')}) — too little to read a pattern into yet.`
+    : `Every window has at least ${TOD_MIN_CONFIDENT} entries behind it.`;
+  note.classList.toggle('thin', thin.length > 0);
+}
+
+// Which symptoms actually turn up, and how hard they hit when they do. The
+// timeline chart plots all five series together, but at a month's scale the
+// rare ones are lost in it — this is the flat count.
+const SYMPTOM_SERIES = [
+  { key: 'wheeze',    sev: 'wheezeSeverity',    label: 'Wheeze',              color: 'wheeze' },
+  { key: 'shortness', sev: 'shortnessSeverity', label: 'Shortness of breath', color: 'shortness' },
+  { key: 'cough',     sev: 'coughSeverity',     label: 'Cough',               color: 'cough' },
+  { key: 'chest',     sev: 'chestSeverity',     label: 'Chest tightness',     color: 'chest' },
+  { key: 'phlegm',    sev: null,                label: 'Phlegm / mucus',      color: 'phlegm' }
+];
+
+function aggregateSymptomMix(){
+  const pal = chartPalette();
+  return SYMPTOM_SERIES.map(sy => {
+    // Matches the history list: an entry counts as having the symptom if the
+    // checkbox is set or a severity was recorded, since older entries can
+    // carry one without the other.
+    const hits = entries.filter(e => e[sy.key] || (sy.sev && e[sy.sev] > 0));
+    const graded = sy.sev ? hits.map(e => e[sy.sev]).filter(v => v != null) : [];
+    return {
+      label: sy.label,
+      color: pal[sy.color],
+      count: hits.length,
+      avg: graded.length ? graded.reduce((a, b) => a + b, 0) / graded.length : null
+    };
+  }).sort((a, b) => b.count - a.count);
+}
+
+function renderSymptomMixChart(){
+  const ctx = document.getElementById('symptomMixChart');
+  if(symptomMixChartInstance){ symptomMixChartInstance.destroy(); symptomMixChartInstance = null; }
+  const note = document.getElementById('symptomMixChartNote');
+  const rows = aggregateSymptomMix();
+  const total = entries.length;
+  if(!total || !rows.some(r => r.count)){
+    note.textContent = '';
+    note.classList.remove('thin');
+    return;
+  }
+  const pal = chartPalette();
+
+  symptomMixChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: rows.map(r => r.label),
+      datasets: [{
+        label: 'Entries',
+        data: rows.map(r => r.count),
+        backgroundColor: rows.map(r => hexToRgba(r.color, 0.8)),
+        borderRadius: 3,
+        maxBarThickness: 26
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      // Long symptom names stack down the left edge instead of being rotated.
+      indexAxis: 'y',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: pal.tooltipBg,
+          titleFont: { family: 'JetBrains Mono', size: 11 },
+          bodyFont: { family: 'Inter', size: 12 },
+          callbacks: {
+            label: (c) => {
+              const r = rows[c.dataIndex];
+              const pct = Math.round((r.count / total) * 100);
+              const sev = r.avg != null ? ` · avg ${severityLabel(Math.round(r.avg))} when present` : '';
+              return `${r.count} of ${total} entries (${pct}%)${sev}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          ticks: { color: pal.textMuted, font: { family: 'Inter', size: 10 }, precision: 0 },
+          grid: { color: pal.gridLine },
+          title: { display: true, text: 'Entries recording it', color: pal.textMuted, font: { family: 'Inter', size: 11 } }
+        },
+        y: {
+          ticks: { color: pal.textMuted, font: { family: 'Inter', size: 10 } },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+
+  note.textContent = `Across ${total} entr${total === 1 ? 'y' : 'ies'}. Phlegm is logged yes/no, so it has no severity.`;
+  note.classList.remove('thin');
 }
 
 function aggregateSeverityBySetting(){
@@ -1779,7 +2169,7 @@ function editEntry(id){
   if(selectedChest !== null) selectSeverityButton('sev-chest', selectedChest);
   if(selectedShortness !== null) selectSeverityButton('sev-shortness', selectedShortness);
 
-  document.querySelector('.tab[data-tab="entry"]').click();
+  showDest('log');
 }
 
 loadEntries();
