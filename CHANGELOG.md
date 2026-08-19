@@ -3,7 +3,11 @@
 Versions follow semver. The git tag is what makes a release; see
 [README](README.md#versioning-and-releases).
 
-## Unreleased
+## 1.4.0
+
+The interface is rebuilt around three destinations, Today, Log and Trends, in
+place of the two tabs. Nothing changes on disk or over the API, so upgrading
+needs no action beyond pulling the image.
 
 ### Changed
 
